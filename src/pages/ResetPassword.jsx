@@ -1,0 +1,71 @@
+import React, { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+
+const ResetPassword = () => {
+  const { token } = useParams();
+  const navigate = useNavigate();
+
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+
+  const handleReset = async (e) => {
+    e.preventDefault();
+    setMessage("");
+
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/auth/reset-password/${token}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ newPassword: password }),
+        }
+      );
+
+      const data = await res.json();
+      setMessage(data.message);
+
+      if (res.ok) {
+        setTimeout(() => navigate("/login"), 1500);
+      }
+    } catch (err) {
+      setMessage("❌ Something went wrong.");
+    }
+  };
+
+  return (
+    <div className="min-h-[70vh] flex flex-col justify-center items-center px-4 bg-pink-50">
+      <form
+        onSubmit={handleReset}
+        className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md border border-pink-100"
+      >
+        <h2 className="text-2xl font-semibold text-center text-pink-600 mb-6">
+          Set New Password
+        </h2>
+
+        <input
+          type="password"
+          placeholder="Enter new password"
+          className="w-full border border-gray-300 px-4 py-2 rounded-lg mb-4 outline-none"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={6}
+        />
+
+        <button
+          type="submit"
+          className="w-full bg-pink-500 text-white py-3 rounded-lg hover:bg-pink-600 transition"
+        >
+          Reset Password
+        </button>
+
+        {message && (
+          <p className="mt-4 text-center text-sm text-gray-700">{message}</p>
+        )}
+      </form>
+    </div>
+  );
+};
+
+export default ResetPassword;

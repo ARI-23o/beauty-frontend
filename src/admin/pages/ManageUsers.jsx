@@ -1,19 +1,17 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import api from "../../api";
+
 function ManageUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const token = localStorage.getItem("adminToken");
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await api.get("http://localhost:5000/api/users", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUsers(res.data);
+        const res = await api.get("/api/users");
+        // backend may return { users: [...] } or array directly
+        setUsers(res.data.users || res.data || []);
       } catch (err) {
         console.error("Error fetching users:", err);
         setError("Failed to load users.");
@@ -23,7 +21,7 @@ function ManageUsers() {
     };
 
     fetchUsers();
-  }, [token]);
+  }, []);
 
   if (loading) {
     return <p className="text-center mt-10">Loading users...</p>;

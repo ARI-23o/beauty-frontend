@@ -1,13 +1,25 @@
 // src/api.js
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
-
-console.log("✅ API BASE:", API_BASE); // for debug
+const BASE =
+  import.meta.env.VITE_API_BASE ||
+  "https://beauty-backend-reyn.onrender.com"; // <-- Render URL fallback
 
 const api = axios.create({
-  baseURL: API_BASE,
-  withCredentials: true,
+  baseURL: BASE,
+  timeout: 20000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Attach token automatically if present
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token") || localStorage.getItem("adminToken");
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 export default api;

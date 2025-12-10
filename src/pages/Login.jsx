@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Eye, EyeOff, Mail, Phone, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import api from "../api";
+
 const Login = () => {
   const [emailOrMobile, setEmailOrMobile] = useState("");
   const [password, setPassword] = useState("");
@@ -35,28 +36,41 @@ const Login = () => {
       return;
     }
 
+    // clear old field errors if validation passed
+    setErrors({});
+
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emailOrMobile, password }),
+      // ✅ use shared API client (baseURL = your Render backend)
+      const res = await api.post("/api/auth/login", {
+        emailOrMobile,
+        password,
       });
 
-      const data = await res.json();
+      const data = res.data || {};
 
-      if (res.ok) {
+      // store token + user if returned by backend
+      if (data.token) {
         localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-
-        window.dispatchEvent(new Event("auth-changed"));
-        setMessage("✅ Login successful!");
-
-        window.location.href = "/";
-      } else {
-        setMessage(`❌ ${data.message}`);
       }
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }
+
+      // notify navbar / other listeners that auth changed
+      window.dispatchEvent(new Event("auth-changed"));
+
+      setMessage("✅ Login successful!");
+
+      // redirect to home (or wherever you prefer)
+      window.location.href = "/";
     } catch (error) {
-      setMessage("⚠️ Something went wrong. Try again later.");
+      console.error("Login error:", error?.response?.data || error.message);
+
+      const backendMessage =
+        error?.response?.data?.message ||
+        "⚠️ Something went wrong. Try again later.";
+
+      setMessage(`❌ ${backendMessage}`);
     }
   };
 

@@ -3,7 +3,7 @@ import axios from "axios";
 
 const BASE =
   import.meta.env.VITE_API_BASE ||
-  "https://beauty-backend-reyn.onrender.com"; // <-- Render URL fallback
+  "https://beauty-backend-reyn.onrender.com"; // fallback (deployed backend)
 
 const api = axios.create({
   baseURL: BASE,
@@ -13,11 +13,15 @@ const api = axios.create({
   },
 });
 
-// Attach token automatically if present
+// Add token automatically if present (for user + admin)
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token") || localStorage.getItem("adminToken");
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`;
+  try {
+    const token = localStorage.getItem("token") || localStorage.getItem("adminToken");
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (e) {
+    // ignore
   }
   return config;
 });

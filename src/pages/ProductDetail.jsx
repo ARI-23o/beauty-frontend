@@ -4,8 +4,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import axios from "axios";
 import RatingStars from "../components/RatingStars";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+import api from "../api";
 
 const PLACEHOLDER = `data:image/svg+xml;utf8,${encodeURIComponent(
   `<svg xmlns='http://www.w3.org/2000/svg' width='600' height='500'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-family='Arial' font-size='20'>No Image</text></svg>`
@@ -23,9 +22,12 @@ function ProductDetail() {
   const [ratingData, setRatingData] = useState({ avg: 0, count: 0, reviews: [] });
 
   // gallery related states
-  const images = Array.isArray(product?.images) && product.images.length > 0
-    ? product.images
-    : (product?.image ? [product.image] : []);
+  const images =
+    Array.isArray(product?.images) && product.images.length > 0
+      ? product.images
+      : product?.image
+      ? [product.image]
+      : [];
   const [activeTab, setActiveTab] = useState("images"); // "images" | "video"
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -44,7 +46,8 @@ function ProductDetail() {
 
     const fetch = async () => {
       try {
-        const res = await axios.get(`${API_BASE}/api/products/${id}`);
+        // ✅ removed API_BASE — use relative path with shared api instance
+        const res = await api.get(`/api/products/${id}`);
         const p = res.data || null;
         if (p) {
           // normalize rating fields if older schema used
@@ -61,7 +64,8 @@ function ProductDetail() {
 
     const loadRatings = async () => {
       try {
-        const r = await axios.get(`${API_BASE}/api/ratings/product/${id}`);
+        // ✅ removed API_BASE
+        const r = await api.get(`/api/ratings/product/${id}`);
         if (mounted) setRatingData(r.data || { avg: 0, count: 0, reviews: [] });
       } catch (err) {
         // ignore rating load errors
@@ -71,30 +75,40 @@ function ProductDetail() {
     fetch();
     loadRatings();
 
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [id]);
-
-  // reset gallery & favorited when product changes
-  useEffect(() => {
-    setActiveIndex(0);
-    setIsPaused(false);
-    setActiveTab(images && images.length ? "images" : (product && product.video ? "video" : "images"));
-    checkFavorited();
-    // eslint-disable-next-line
-  }, [product?._id]);
 
   // check if product is favorited by current user (via GET /api/favorites)
   const checkFavorited = async () => {
     try {
       const token = localStorage.getItem("token");
-      if (!token) { setFavorited(false); return; }
-      const res = await axios.get(`${API_BASE}/api/favorites`, { headers: { Authorization: `Bearer ${token}` } });
-      const favs = Array.isArray(res.data.favorites) ? res.data.favorites.map((f) => f._id || f.id) : [];
+      if (!token) {
+        setFavorited(false);
+        return;
+      }
+      // ✅ removed API_BASE
+      const res = await api.get(`/api/favorites`, { headers: { Authorization: `Bearer ${token}` } });
+      const favs = Array.isArray(res.data.favorites)
+        ? res.data.favorites.map((f) => f._id || f.id || f.productId)
+        : [];
       setFavorited(pid ? favs.includes(pid) : false);
     } catch (err) {
       setFavorited(false);
     }
   };
+
+  // reset gallery & favorited when product changes
+  useEffect(() => {
+    setActiveIndex(0);
+    setIsPaused(false);
+    setActiveTab(
+      images && images.length ? "images" : product && product.video ? "video" : "images"
+    );
+    checkFavorited();
+    // eslint-disable-next-line
+  }, [product?._id]);
 
   // auto-scroll effect for images
   useEffect(() => {
@@ -141,7 +155,7 @@ function ProductDetail() {
       try {
         if (videoRef.current && typeof videoRef.current.play === "function") {
           videoRef.current.play().catch(() => {
-            /* autoplay may be blocked — user can press play */ 
+            /* autoplay may be blocked — user can press play */
           });
         }
       } catch {}
@@ -150,7 +164,9 @@ function ProductDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen"><p className="text-lg text-gray-600">Loading product...</p></div>
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-lg text-gray-600">Loading product...</p>
+      </div>
     );
   }
   if (!product) return null;
@@ -165,7 +181,8 @@ function ProductDetail() {
     addToCart({ ...product, _id: pid, productId: pid });
   };
 
-  const mainSrc = (images && images.length) ? images[activeIndex] : (product.image || PLACEHOLDER);
+  const mainSrc =
+    images && images.length ? images[activeIndex] : product.image || PLACEHOLDER;
 
   const handleThumbClick = (i) => {
     setActiveIndex(i);
@@ -181,29 +198,35 @@ function ProductDetail() {
         return;
       }
       if (!pid) return;
+
       if (!favorited) {
-        await axios.post(`${API_BASE}/api/favorites/${pid}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+        // ✅ removed API_BASE
+        await api.post(
+          `/api/favorites/${pid}`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         setFavorited(true);
       } else {
-        await axios.delete(`${API_BASE}/api/favorites/${pid}`, { headers: { Authorization: `Bearer ${token}` } });
+        // ✅ removed API_BASE
+        await api.delete(`/api/favorites/${pid}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setFavorited(false);
       }
       window.dispatchEvent(new Event("favorites-changed"));
     } catch (err) {
       console.error("Toggle favorite failed", err);
-      // show a simple alert for now
       alert(err?.response?.data?.message || "Failed to update favorite");
     }
   };
 
   return (
     <div className="max-w-6xl mx-auto py-16 px-6 md:px-12 grid md:grid-cols-2 gap-12 items-start">
-
       {/* ===========================
           LEFT SECTION
           =========================== */}
       <div className="flex gap-6">
-
         {/* Thumbnails (Desktop) */}
         <div className="hidden md:flex flex-col gap-3 w-28">
           {images && images.length ? (
@@ -211,7 +234,9 @@ function ProductDetail() {
               <button
                 key={i}
                 onClick={() => handleThumbClick(i)}
-                className={`rounded overflow-hidden ${i === activeIndex ? "ring-2 ring-pink-400" : ""}`}
+                className={`rounded overflow-hidden ${
+                  i === activeIndex ? "ring-2 ring-pink-400" : ""
+                }`}
                 aria-label={`Thumbnail ${i + 1}`}
               >
                 <img
@@ -229,12 +254,15 @@ function ProductDetail() {
 
         {/* MAIN IMAGE + VIDEO SECTION */}
         <div className="flex-1">
-
           {/* Tabs (Images / Video) */}
           <div className="mb-4 flex items-center gap-2">
             <button
               onClick={() => setActiveTab("images")}
-              className={`px-3 py-1 rounded ${activeTab === "images" ? "bg-pink-100 text-pink-600" : "bg-white border"}`}
+              className={`px-3 py-1 rounded ${
+                activeTab === "images"
+                  ? "bg-pink-100 text-pink-600"
+                  : "bg-white border"
+              }`}
             >
               Images
             </button>
@@ -242,11 +270,14 @@ function ProductDetail() {
             {product.video && (
               <button
                 onClick={() => {
-                  // focus explicitly on video tab (don't auto-play until user clicks play)
                   setActiveTab("video");
                   setIsPaused(true);
                 }}
-                className={`px-3 py-1 rounded ${activeTab === "video" ? "bg-pink-100 text-pink-600" : "bg-white border"}`}
+                className={`px-3 py-1 rounded ${
+                  activeTab === "video"
+                    ? "bg-pink-100 text-pink-600"
+                    : "bg-white border"
+                }`}
               >
                 Video
               </button>
@@ -255,24 +286,36 @@ function ProductDetail() {
 
           {/* MAIN IMAGE / VIDEO WRAPPER */}
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden relative">
-
-            {/* ❤️ FAVORITE BUTTON – now on TOP-RIGHT OF MAIN IMAGE */}
+            {/* ❤️ FAVORITE BUTTON – on top-right of main media */}
             <button
               onClick={toggleFavorite}
-              className={`absolute top-3 right-3 z-30 p-3 rounded-full ${favorited ? "bg-pink-50 text-pink-600" : "bg-white text-gray-700 shadow"}`}
+              className={`absolute top-3 right-3 z-30 p-3 rounded-full ${
+                favorited
+                  ? "bg-pink-50 text-pink-600"
+                  : "bg-white text-gray-700 shadow"
+              }`}
               title={favorited ? "Remove favorite" : "Add favorite"}
               aria-label={favorited ? "Remove favorite" : "Add favorite"}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <path d={
-                  favorited
-                    ? "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 3.99 4 6.5 4c1.74 0 3.41.81 4.5 2.09C12.59 4.81 14.26 4 16 4 18.51 4 20.5 6 20.5 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                    : "M16 4c-1.54 0-3.04.99-3.57 2.36h-1.87C11.04 4.99 9.54 4 8 4 5.51 4 3.5 6 3.5 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l.95-.81C17.1 15.36 20.5 12.28 20.5 8.5 20.5 6 18.49 4 16 4z"
-                } />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden
+              >
+                <path
+                  d={
+                    favorited
+                      ? "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 3.99 4 6.5 4c1.74 0 3.41.81 4.5 2.09C12.59 4.81 14.26 4 16 4 18.51 4 20.5 6 20.5 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                      : "M16 4c-1.54 0-3.04.99-3.57 2.36h-1.87C11.04 4.99 9.54 4 8 4 5.51 4 3.5 6 3.5 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l.95-.81C17.1 15.36 20.5 12.28 20.5 8.5 20.5 6 18.49 4 16 4z"
+                  }
+                />
               </svg>
             </button>
 
-            {/* IMAGE TAB (default) */}
+            {/* IMAGE TAB */}
             {activeTab === "images" ? (
               <div className="relative w-full max-w-[620px] mx-auto">
                 <img
@@ -284,9 +327,8 @@ function ProductDetail() {
                 />
               </div>
             ) : (
-              /* VIDEO TAB — REPLACES IMAGE AREA (no overlay) */
-              <div className="relative bg-black/5 flex items-center justify-center h-[560px]">
-                {/* Render the video element in place of image */}
+              /* VIDEO TAB */
+              <div className="relative bg-black/5 flex items-center justify-center h_[560px]">
                 <div className="w-full max-w-[900px] p-6">
                   <video
                     ref={videoRef}
@@ -307,7 +349,9 @@ function ProductDetail() {
                 <button
                   key={i}
                   onClick={() => handleThumbClick(i)}
-                  className={`flex-shrink-0 ${i === activeIndex ? "ring-2 ring-pink-400" : ""}`}
+                  className={`flex-shrink-0 ${
+                    i === activeIndex ? "ring-2 ring-pink-400" : ""
+                  }`}
                 >
                   <img
                     src={u || PLACEHOLDER}
@@ -333,39 +377,61 @@ function ProductDetail() {
         <div className="flex items-center gap-4 mb-4">
           <RatingStars value={ratingData.avg || 0} size={20} />
           <div className="text-sm text-gray-600">
-            {ratingData.avg ? `${ratingData.avg.toFixed(1)} out of 5` : "No rating yet"} • {ratingData.count || 0} review(s)
+            {ratingData.avg
+              ? `${ratingData.avg.toFixed(1)} out of 5`
+              : "No rating yet"}{" "}
+            • {ratingData.count || 0} review(s)
           </div>
         </div>
 
         {/* Brand */}
         {product.brand && (
           <p className="text-gray-600 text-lg mb-2">
-            <span className="font-semibold text-gray-800">Brand:</span> {product.brand}
+            <span className="font-semibold text-gray-800">Brand:</span>{" "}
+            {product.brand}
           </p>
         )}
 
         {/* Category */}
         {product.category && (
           <p className="text-gray-600 text-lg mb-2 capitalize">
-            <span className="font-semibold text-gray-800">Category:</span> {product.category}
+            <span className="font-semibold text-gray-800">Category:</span>{" "}
+            {product.category}
           </p>
         )}
 
         {/* Price */}
-        <p className="text-pink-600 text-3xl font-semibold mb-4">₹{Number(product.price).toLocaleString("en-IN")}</p>
+        <p className="text-pink-600 text-3xl font-semibold mb-4">
+          ₹{Number(product.price).toLocaleString("en-IN")}
+        </p>
 
         {/* Description */}
-        <p className="text-gray-700 mb-6 leading-relaxed whitespace-pre-line">{product.description || "No description available for this product yet."}</p>
+        <p className="text-gray-700 mb-6 leading-relaxed whitespace-pre-line">
+          {product.description || "No description available for this product yet."}
+        </p>
 
         {/* ACTIONS */}
         <div className="flex gap-4 mb-8">
           {!inCart ? (
-            <button onClick={handleAdd} className="bg-pink-500 text-white px-6 py-3 rounded-md text-lg hover:bg-pink-600 transition">Add to Cart</button>
+            <button
+              onClick={handleAdd}
+              className="bg-pink-500 text-white px-6 py-3 rounded-md text-lg hover:bg-pink-600 transition"
+            >
+              Add to Cart
+            </button>
           ) : (
-            <button disabled className="bg-gray-300 text-gray-700 px-6 py-3 rounded-md text-lg cursor-not-allowed">Added ✓</button>
+            <button
+              disabled
+              className="bg-gray-300 text-gray-700 px-6 py-3 rounded-md text-lg cursor-not-allowed"
+            >
+              Added ✓
+            </button>
           )}
 
-          <button onClick={() => navigate(inCart ? "/cart" : "/shop")} className="border border-pink-500 text-pink-500 px-6 py-3 rounded-md text-lg hover:bg-pink-50 transition">
+          <button
+            onClick={() => navigate(inCart ? "/cart" : "/shop")}
+            className="border border-pink-500 text-pink-500 px-6 py-3 rounded-md text-lg hover:bg-pink-50 transition"
+          >
             {inCart ? "Go to Cart" : "Back to Shop"}
           </button>
         </div>
@@ -374,23 +440,36 @@ function ProductDetail() {
         <div className="mt-6">
           <h3 className="text-xl font-semibold mb-3">Customer Reviews</h3>
 
-          {(!ratingData.reviews || ratingData.reviews.length === 0) ? (
-            <div className="text-gray-500">No reviews yet — be the first to rate!</div>
+          {!ratingData.reviews || ratingData.reviews.length === 0 ? (
+            <div className="text-gray-500">
+              No reviews yet — be the first to rate!
+            </div>
           ) : (
             <div className="space-y-4">
               {ratingData.reviews.map((r) => (
-                <div key={r._id || r.id} className="bg-white p-4 rounded shadow-sm">
+                <div
+                  key={r._id || r.id}
+                  className="bg-white p-4 rounded shadow-sm"
+                >
                   <div className="flex items-center justify-between mb-2">
-                    <div className="font-medium">{r.reviewerName || "Customer"}</div>
-                    <div className="text-sm text-gray-600">{new Date(r.createdAt).toLocaleDateString()}</div>
+                    <div className="font-medium">
+                      {r.reviewerName || "Customer"}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {new Date(r.createdAt).toLocaleDateString()}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-3 mb-2">
                     <RatingStars value={r.rating} size={16} />
-                    <div className="text-sm text-gray-700 font-semibold">{r.rating}/5</div>
+                    <div className="text-sm text-gray-700 font-semibold">
+                      {r.rating}/5
+                    </div>
                   </div>
 
-                  {r.comment && <div className="text-gray-700">{r.comment}</div>}
+                  {r.comment && (
+                    <div className="text-gray-700">{r.comment}</div>
+                  )}
                 </div>
               ))}
             </div>

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from "recharts";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+import api from "../../api";
 
 export default function AnalyticsAdmin() {
   const token = localStorage.getItem("adminToken");
@@ -16,7 +15,7 @@ export default function AnalyticsAdmin() {
         const headers = { Authorization: `Bearer ${token}` };
         // We'll use a simple admin stats endpoint; if you don't want to add new backend,
         // we can compute client-side from /api/orders but for performance a backend endpoint is preferable.
-        const res = await axios.get(`${API_BASE}/api/admin/stats/orders-summary`, { headers });
+        const res = await api.get(`${API_BASE}/api/admin/stats/orders-summary`, { headers });
         // expected res.data = { byStatus: { Pending: 5, Shipped: 10, Delivered: 20 }, byDay: [{date:'2025-11-01', revenue: 1200}, ...] }
         const data = res.data || {};
         const byStatus = Object.entries(data.byStatus || {}).map(([k, v]) => ({ status: k, count: v }));

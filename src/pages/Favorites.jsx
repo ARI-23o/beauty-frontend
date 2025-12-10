@@ -4,8 +4,7 @@ import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { FaTrash } from "react-icons/fa";
 import { toast } from "react-toastify";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+import api from "../api";
 
 const Favorites = () => {
   const [favorites, setFavorites] = useState([]);
@@ -25,7 +24,8 @@ const Favorites = () => {
         return;
       }
 
-      const res = await axios.get(`${API_BASE}/api/favorites`, {
+      // ✅ FIXED: removed API_BASE, use relative path with shared api instance
+      const res = await api.get("/api/favorites", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -64,7 +64,8 @@ const Favorites = () => {
 
       const pid = productId?._id || productId?.id || productId;
 
-      await axios.delete(`${API_BASE}/api/favorites/${pid}`, {
+      // ✅ FIXED: removed API_BASE, use relative path with api
+      await api.delete(`/api/favorites/${pid}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

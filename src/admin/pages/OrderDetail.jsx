@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { toast } from "react-toastify";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+import api from "../../api";
 
 export default function OrderDetailAdmin() {
   const { id } = useParams();
@@ -33,7 +31,8 @@ export default function OrderDetailAdmin() {
 
   const fetchOrder = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/api/orders/${id}`, axiosConfig);
+      // ✅ use api with relative path (no API_BASE)
+      const res = await api.get(`/api/orders/${id}`, axiosConfig);
       setOrder(res.data);
     } catch (err) {
       console.error("Failed to load order (admin):", err?.response?.data || err.message || err);
@@ -43,8 +42,8 @@ export default function OrderDetailAdmin() {
 
   const fetchTracking = async () => {
     try {
-      // get latest tracking for this order
-      const res = await axios.get(`${API_BASE}/api/tracking/order/${id}`, axiosConfig);
+      // ✅ use api with relative path (no API_BASE)
+      const res = await api.get(`/api/tracking/order/${id}`, axiosConfig);
       setTracking(res.data);
     } catch (err) {
       // if 404 - no tracking yet
@@ -81,7 +80,8 @@ export default function OrderDetailAdmin() {
         useAftership: false,
       };
 
-      const res = await axios.post(`${API_BASE}/api/tracking/${order._id}/create`, body, axiosConfig);
+      // ✅ use api with relative path
+      const res = await api.post(`/api/tracking/${order._id}/create`, body, axiosConfig);
       toast.success("Tracking created");
       await fetchTracking();
       await fetchOrder();
@@ -97,7 +97,8 @@ export default function OrderDetailAdmin() {
     if (!tracking?._id) return toast.error("No tracking to poll");
     setPolling(true);
     try {
-      await axios.post(`${API_BASE}/api/tracking/${tracking._id}/poll`, {}, axiosConfig);
+      // ✅ use api with relative path
+      await api.post(`/api/tracking/${tracking._id}/poll`, {}, axiosConfig);
       toast.success("Polled tracking (check timeline)");
       await fetchTracking();
       await fetchOrder();
@@ -121,7 +122,8 @@ export default function OrderDetailAdmin() {
 
     try {
       const body = { status: manualStatus, message: manualMessage };
-      await axios.patch(`${API_BASE}/api/tracking/${tracking._id}/status`, body, axiosConfig);
+      // ✅ use api with relative path
+      await api.patch(`/api/tracking/${tracking._id}/status`, body, axiosConfig);
       toast.success("Tracking status updated");
       setShowManual(false);
       await fetchTracking();
@@ -208,7 +210,8 @@ export default function OrderDetailAdmin() {
                 onChange={async (e) => {
                   try {
                     const newS = e.target.value;
-                    await axios.put(`${API_BASE}/api/orders/${order._id}/status`, { status: newS }, axiosConfig);
+                    // ✅ use api with relative path
+                    await api.put(`/api/orders/${order._id}/status`, { status: newS }, axiosConfig);
                     toast.success("Order status updated");
                     await fetchOrder();
                   } catch (err) {
@@ -248,38 +251,55 @@ export default function OrderDetailAdmin() {
               </div>
 
               <div className="mb-3">
-                <button onClick={() => { setCreateCourier(tracking.courier || ''); setCreateTrackingNumber(tracking.trackingNumber || ''); }} className="mr-2 bg-gray-100 px-2 py-1 rounded">Edit</button>
+                <button
+                  onClick={() => {
+                    setCreateCourier(tracking.courier || "");
+                    setCreateTrackingNumber(tracking.trackingNumber || "");
+                  }}
+                  className="mr-2 bg-gray-100 px-2 py-1 rounded"
+                >
+                  Edit
+                </button>
                 <button onClick={handleOpenManual} className="mr-2 bg-pink-500 text-white px-2 py-1 rounded">Manual Update</button>
-                <button onClick={handlePollTracking} disabled={polling} className="bg-indigo-500 text-white px-2 py-1 rounded">Poll Now</button>
+                <button onClick={handlePollTracking} disabled={polling} className="bg-indigo-500 text-white px-2 py-1 rounded">
+                  {polling ? "Polling..." : "Poll Now"}
+                </button>
               </div>
 
               <div>
                 <h4 className="font-semibold mb-2">Timeline</h4>
                 <div className="space-y-2 max-h-64 overflow-auto">
-                  {timeline.length ? timeline.map((h, i) => (
-                    <div key={i} className="p-2 border rounded">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="font-medium">{h.status}</div>
-                          <div className="text-xs text-gray-600">{h.message}</div>
-                          {h.location && <div className="text-xs text-gray-500">{h.location}</div>}
+                  {timeline.length ? (
+                    timeline.map((h, i) => (
+                      <div key={i} className="p-2 border rounded">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-medium">{h.status}</div>
+                            <div className="text-xs text-gray-600">{h.message}</div>
+                            {h.location && <div className="text-xs text-gray-500">{h.location}</div>}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {h.timestamp ? new Date(h.timestamp).toLocaleString() : ""}
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-400">{new Date(h.timestamp).toLocaleString()}</div>
+                        {h.proof_url && (
+                          <div className="mt-2">
+                            <a
+                              // ✅ use proof_url directly; backend should send full URL
+                              href={h.proof_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-pink-600 underline"
+                            >
+                              View proof
+                            </a>
+                          </div>
+                        )}
                       </div>
-                      {h.proof_url && (
-                        <div className="mt-2">
-                          <a
-                            href={`${API_BASE}${h.proof_url}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-pink-600 underline"
-                          >
-                            View proof
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  )) : <div className="text-sm text-gray-500">No timeline entries yet.</div>}
+                    ))
+                  ) : (
+                    <div className="text-sm text-gray-500">No timeline entries yet.</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -287,12 +307,35 @@ export default function OrderDetailAdmin() {
             <div className="text-sm text-gray-600">
               No tracking exists for this order.
               <div className="mt-3">
-                <input value={createCourier} onChange={(e) => setCreateCourier(e.target.value)} placeholder="Courier (eg: Delhivery)" className="border px-2 py-1 rounded w-full mb-2" />
+                <input
+                  value={createCourier}
+                  onChange={(e) => setCreateCourier(e.target.value)}
+                  placeholder="Courier (eg: Delhivery)"
+                  className="border px-2 py-1 rounded w-full mb-2"
+                />
                 <div className="flex gap-2">
-                  <input value={createTrackingNumber} onChange={(e) => setCreateTrackingNumber(e.target.value)} placeholder="Tracking number (optional)" className="border px-2 py-1 rounded flex-1" />
-                  <button onClick={handleCreateTracking} disabled={creating} className="bg-pink-500 text-white px-3 py-1 rounded">{creating ? 'Creating...' : 'Create'}</button>
+                  <input
+                    value={createTrackingNumber}
+                    onChange={(e) => setCreateTrackingNumber(e.target.value)}
+                    placeholder="Tracking number (optional)"
+                    className="border px-2 py-1 rounded flex-1"
+                  />
+                  <button
+                    onClick={handleCreateTracking}
+                    disabled={creating}
+                    className="bg-pink-500 text-white px-3 py-1 rounded"
+                  >
+                    {creating ? "Creating..." : "Create"}
+                  </button>
                 </div>
-                <label className="text-xs text-gray-500 mt-2 block"><input type="checkbox" checked={createAuto} onChange={(e) => setCreateAuto(e.target.checked)} /> Auto-update</label>
+                <label className="text-xs text-gray-500 mt-2 block">
+                  <input
+                    type="checkbox"
+                    checked={createAuto}
+                    onChange={(e) => setCreateAuto(e.target.checked)}
+                  />{" "}
+                  Auto-update
+                </label>
               </div>
             </div>
           )}
@@ -303,7 +346,11 @@ export default function OrderDetailAdmin() {
               <div className="absolute inset-0 bg-black/40" onClick={() => setShowManual(false)} />
               <div className="bg-white rounded p-4 z-50 w-full max-w-md shadow">
                 <h4 className="font-semibold mb-2">Manual Tracking Update</h4>
-                <select value={manualStatus} onChange={(e) => setManualStatus(e.target.value)} className="w-full border px-3 py-2 rounded mb-2">
+                <select
+                  value={manualStatus}
+                  onChange={(e) => setManualStatus(e.target.value)}
+                  className="w-full border px-3 py-2 rounded mb-2"
+                >
                   <option value="">Select status</option>
                   <option>Created</option>
                   <option>Processing</option>
@@ -312,10 +359,25 @@ export default function OrderDetailAdmin() {
                   <option>Delivered</option>
                   <option>Exception</option>
                 </select>
-                <textarea value={manualMessage} onChange={(e) => setManualMessage(e.target.value)} placeholder="Optional message" className="w-full border px-3 py-2 rounded mb-2" />
+                <textarea
+                  value={manualMessage}
+                  onChange={(e) => setManualMessage(e.target.value)}
+                  placeholder="Optional message"
+                  className="w-full border px-3 py-2 rounded mb-2"
+                />
                 <div className="flex justify-end gap-2">
-                  <button onClick={() => setShowManual(false)} className="px-3 py-1 border rounded">Cancel</button>
-                  <button onClick={handleManualUpdate} className="px-3 py-1 bg-pink-600 text-white rounded">Update</button>
+                  <button
+                    onClick={() => setShowManual(false)}
+                    className="px-3 py-1 border rounded"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleManualUpdate}
+                    className="px-3 py-1 bg-pink-600 text-white rounded"
+                  >
+                    Update
+                  </button>
                 </div>
               </div>
             </div>

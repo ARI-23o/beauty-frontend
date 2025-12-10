@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import api from "../api";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -37,7 +38,8 @@ const Signup = () => {
     try {
       setLoading(true);
       setMessage("");
-      await axios.post("http://localhost:5000/api/auth/request-otp", formData);
+      // ✅ use shared api instance with baseURL, no hardcoded localhost
+      await api.post("/api/auth/request-otp", formData);
       setStep(2);
       setMessage("OTP sent to email and mobile");
     } catch (err) {
@@ -53,7 +55,8 @@ const Signup = () => {
     try {
       setLoading(true);
       setMessage("");
-      const res = await axios.post("http://localhost:5000/api/auth/verify-otp", {
+      // ✅ use api instance
+      const res = await api.post("/api/auth/verify-otp", {
         email: formData.email,
         emailOTP: otpData.emailOTP,
         mobileOTP: otpData.mobileOTP,
@@ -71,12 +74,16 @@ const Signup = () => {
     try {
       setLoading(true);
       setMessage("");
-      await axios.post("http://localhost:5000/api/auth/resend-otp", { email: formData.email });
+      // ✅ use api instance
+      await api.post("/api/auth/resend-otp", { email: formData.email });
       setMessage("OTP resent successfully");
       setResendCountdown(60);
       const interval = setInterval(() => {
         setResendCountdown((prev) => {
-          if (prev <= 1) { clearInterval(interval); return 0; }
+          if (prev <= 1) { 
+            clearInterval(interval); 
+            return 0; 
+          }
           return prev - 1;
         });
       }, 1000);
@@ -90,7 +97,9 @@ const Signup = () => {
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
       <form className="bg-white shadow-md rounded-xl p-8 w-full max-w-md">
-        <h2 className="text-2xl font-semibold mb-6 text-center">{step === 1 ? "Create Account" : "Verify OTP"}</h2>
+        <h2 className="text-2xl font-semibold mb-6 text-center">
+          {step === 1 ? "Create Account" : "Verify OTP"}
+        </h2>
 
         {step === 1 && (
           <>

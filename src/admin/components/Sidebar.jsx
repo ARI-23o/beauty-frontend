@@ -7,6 +7,7 @@ import {
   FaShoppingBag,
   FaFilter,
   FaClipboardList,
+  FaEnvelopeOpenText, // ✅ NEW ICON FOR CONTACTS
 } from "react-icons/fa";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -14,6 +15,7 @@ import { useNavigate, useLocation } from "react-router-dom";
  * Sidebar
  * - Larger clickable areas
  * - Added Manage Filters link with pink accent
+ * - Added NEW Contacts (Customer Messages) link
  * - Kept other existing links (Products, Users, Orders)
  * - Exposes onLogout callback from parent
  */
@@ -28,15 +30,21 @@ const Sidebar = ({ onLogout, admin }) => {
     { key: "orders", label: "Orders", icon: <FaClipboardList />, to: "/admin/orders" },
     { key: "users", label: "Users", icon: <FaUsers />, to: "/admin/users" },
     { key: "filters", label: "Filters", icon: <FaFilter />, to: "/admin/manage-filters" },
+
+    // ✅ ✅ ✅ NEW CONTACT MESSAGES LINK ✅ ✅ ✅
+    { key: "contacts", label: "Contacts", icon: <FaEnvelopeOpenText />, to: "/admin/contacts" },
   ];
 
   return (
     <aside className="w-64 bg-gradient-to-b from-pink-500 to-rose-400 text-white flex flex-col p-6 space-y-6 shadow-xl min-h-screen">
+      
+      {/* LOGO / ADMIN HEADER */}
       <div className="flex items-center gap-3">
         <div className="text-2xl font-bold tracking-wide">BeautyE</div>
         <div className="text-xs uppercase tracking-wider font-semibold ml-auto">Admin</div>
       </div>
 
+      {/* MAIN NAVIGATION */}
       <nav className="flex flex-col gap-2 mt-6">
         {items.map((it) => {
           const active = location.pathname.startsWith(it.to);
@@ -45,7 +53,7 @@ const Sidebar = ({ onLogout, admin }) => {
               key={it.key}
               onClick={() => navigate(it.to)}
               className={`flex items-center gap-3 text-left px-3 py-2 rounded-lg transition-colors w-full ${
-                active ? "bg-white/10" : "hover:bg-white/5"
+                active ? "bg-white/20" : "hover:bg-white/10"
               }`}
               aria-current={active ? "page" : undefined}
             >
@@ -56,6 +64,7 @@ const Sidebar = ({ onLogout, admin }) => {
         })}
       </nav>
 
+      {/* FOOTER / ADMIN INFO */}
       <div className="mt-auto">
         <div className="text-sm text-white/80 mb-3">
           {admin ? <div>{admin.name}</div> : <div>Admin</div>}
@@ -71,6 +80,7 @@ const Sidebar = ({ onLogout, admin }) => {
           </button>
         </div>
 
+        {/* LOGOUT */}
         <button
           onClick={onLogout}
           className="mt-4 w-full bg-white text-pink-600 font-semibold px-3 py-2 rounded-lg hover:bg-white/90 transition"

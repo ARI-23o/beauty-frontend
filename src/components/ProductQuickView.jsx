@@ -6,8 +6,7 @@ import { useNavigate } from "react-router-dom";
 import RatingStars from "./RatingStars";
 import axios from "axios";
 import { FaPlay, FaHeart, FaTimes } from "react-icons/fa";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+import api from "../api";
 
 const PLACEHOLDER_SVG =
   "data:image/svg+xml;utf8," +
@@ -60,7 +59,7 @@ const ProductQuickView = ({ product, isOpen, onClose }) => {
   const loadRatings = async () => {
     if (!productId) return;
     try {
-      const res = await axios.get(`${API_BASE}/api/ratings/product/${productId}`);
+      const res = await api.get(`${API_BASE}/api/ratings/product/${productId}`);
       setAvg(res.data?.avg ?? 0);
       setCount(res.data?.count ?? 0);
     } catch {
@@ -75,7 +74,7 @@ const ProductQuickView = ({ product, isOpen, onClose }) => {
       const token = localStorage.getItem("token");
       if (!token) return setFavorited(false);
 
-      const res = await axios.get(`${API_BASE}/api/favorites`, {
+      const res = await api.get(`${API_BASE}/api/favorites`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -113,14 +112,14 @@ const ProductQuickView = ({ product, isOpen, onClose }) => {
 
     try {
       if (!favorited) {
-        await axios.post(
+        await api.post(
           `${API_BASE}/api/favorites/${productId}`,
           {},
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setFavorited(true);
       } else {
-        await axios.delete(`${API_BASE}/api/favorites/${productId}`, {
+        await api.delete(`${API_BASE}/api/favorites/${productId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setFavorited(false);

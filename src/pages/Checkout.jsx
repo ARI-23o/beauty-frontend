@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-
+import api from "../api";
 const Checkout = () => {
   const {
     cartItems,
@@ -160,7 +160,7 @@ const Checkout = () => {
     try {
       setIsLoading(true);
 
-      const { data } = await axios.post(
+      const { data } = await api.post(
         "http://localhost:5000/api/payments/create-order",
         {
           amount: totalAmount,
@@ -180,7 +180,7 @@ const Checkout = () => {
         description: "Order Payment",
         handler: async function (response) {
           try {
-            const verifyRes = await axios.post(
+            const verifyRes = await api.post(
               "http://localhost:5000/api/payments/verify-payment",
               {
                 razorpay_order_id: response.razorpay_order_id,

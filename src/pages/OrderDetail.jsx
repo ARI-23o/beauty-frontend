@@ -1,9 +1,7 @@
 // src/pages/OrderDetail.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+import api from "../api";
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -12,14 +10,12 @@ const OrderDetail = () => {
   const [tracking, setTracking] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ FIXED: Correct endpoint
   const fetchOrder = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(
-        `${API_BASE}/api/orders/my-orders/${id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await api.get(`/api/orders/my-orders/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setOrder(res.data);
     } catch (err) {
       console.error("Failed to fetch order", err);
@@ -29,10 +25,9 @@ const OrderDetail = () => {
   const fetchTracking = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(
-        `${API_BASE}/api/tracking/order/${id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await api.get(`/api/tracking/order/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setTracking(res.data);
     } catch (err) {
       setTracking(null);

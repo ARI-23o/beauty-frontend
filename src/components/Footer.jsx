@@ -1,3 +1,4 @@
+// src/components/Footer.jsx
 import React from "react";
 import { FaFacebookF, FaInstagram, FaTwitter, FaPinterestP } from "react-icons/fa";
 import { Link } from "react-router-dom";
@@ -115,7 +116,10 @@ const Footer = () => {
                 placeholder="Enter your email"
                 className="flex-grow px-3 py-2 rounded-l-md text-gray-800 text-sm outline-none"
               />
-              <button className="bg-pink-500 px-4 py-2 rounded-r-md text-sm hover:bg-pink-400 transition">
+              <button
+                type="button"
+                className="bg-pink-500 px-4 py-2 rounded-r-md text-sm hover:bg-pink-400 transition"
+              >
                 Subscribe
               </button>
             </div>
@@ -123,7 +127,7 @@ const Footer = () => {
         </div>
 
         {/* Divider */}
-        <div className="border-t border-gray-700 my-6"></div>
+        <div className="border-t border-gray-700 my-6" />
 
         {/* Bottom Section */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-400">
@@ -131,25 +135,37 @@ const Footer = () => {
 
           <div className="flex space-x-4 text-lg">
             <a
-              href="#"
+              href="https://facebook.com"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Facebook"
               className="hover:text-pink-400 transition-transform transform hover:scale-110"
             >
               <FaFacebookF />
             </a>
             <a
-              href="#"
+              href="https://instagram.com"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Instagram"
               className="hover:text-pink-400 transition-transform transform hover:scale-110"
             >
               <FaInstagram />
             </a>
             <a
-              href="#"
+              href="https://twitter.com"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Twitter"
               className="hover:text-pink-400 transition-transform transform hover:scale-110"
             >
               <FaTwitter />
             </a>
             <a
-              href="#"
+              href="https://pinterest.com"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Pinterest"
               className="hover:text-pink-400 transition-transform transform hover:scale-110"
             >
               <FaPinterestP />

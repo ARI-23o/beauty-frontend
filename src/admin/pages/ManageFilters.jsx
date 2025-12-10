@@ -1,7 +1,7 @@
 // src/admin/pages/ManageFilters.jsx
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { toast } from "react-toastify";
+import api from "../../api";
 
 /*
   Admin Filter Manager (Advanced B)
@@ -10,8 +10,6 @@ import { toast } from "react-toastify";
   - Save / Reset / Load from backend
   - Uses adminToken from localStorage for authorization
 */
-
-const API_BASE = "http://localhost:5000";
 
 const ManageFilters = () => {
   const [loading, setLoading] = useState(true);
@@ -40,7 +38,8 @@ const ManageFilters = () => {
   const loadFilters = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE}/api/filters`);
+      // ✅ use api with relative URL (no API_BASE)
+      const res = await api.get("/api/filters");
       const data = res.data || {};
 
       // ensure normalized arrays
@@ -197,10 +196,15 @@ const ManageFilters = () => {
       const payload = {
         categories: categories.map((c) => c.trim()),
         brands: brands.map((b) => b.trim()),
-        priceRanges: priceRanges.map((r) => ({ label: r.label.trim(), min: Number(r.min), max: Number(r.max) })),
+        priceRanges: priceRanges.map((r) => ({
+          label: r.label.trim(),
+          min: Number(r.min),
+          max: Number(r.max),
+        })),
       };
 
-      await axios.put(`${API_BASE}/api/filters`, payload, axiosConfig);
+      // ✅ use api with relative URL (no API_BASE)
+      await api.put("/api/filters", payload, axiosConfig);
       toast.success("Filters saved");
       // reload to reflect normalization from server
       loadFilters();
@@ -233,7 +237,8 @@ const ManageFilters = () => {
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-800 mb-4">Admin — Manage Filters</h1>
         <p className="text-sm text-gray-600 mb-6">
-          Manage categories, brands and price ranges used by the Shop page filters. After making changes press <strong>Save</strong>.
+          Manage categories, brands and price ranges used by the Shop page filters. After making changes press{" "}
+          <strong>Save</strong>.
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -284,7 +289,10 @@ const ManageFilters = () => {
                   placeholder="Add category (e.g. skincare)"
                   className="flex-1 border px-3 py-2 rounded"
                 />
-                <button onClick={addCategory} className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                <button
+                  onClick={addCategory}
+                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                >
                   Add
                 </button>
               </div>
@@ -337,7 +345,10 @@ const ManageFilters = () => {
                   placeholder="Add brand (e.g. GlowCo)"
                   className="flex-1 border px-3 py-2 rounded"
                 />
-                <button onClick={addBrand} className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                <button
+                  onClick={addBrand}
+                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                >
                   Add
                 </button>
               </div>
@@ -431,26 +442,49 @@ const ManageFilters = () => {
               </div>
 
               <div className="space-y-2">
-                {priceRanges.length === 0 && <div className="text-gray-500">No price ranges defined.</div>}
+                {priceRanges.length === 0 && (
+                  <div className="text-gray-500">No price ranges defined.</div>
+                )}
 
                 {priceRanges.map((r, idx) => (
-                  <div key={r.label + "-" + idx} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                  <div
+                    key={r.label + "-" + idx}
+                    className="flex items-center justify-between bg-gray-50 p-2 rounded"
+                  >
                     <div>
                       <div className="font-medium">{r.label}</div>
-                      <div className="text-sm text-gray-600">₹{r.min} — ₹{r.max}</div>
+                      <div className="text-sm text-gray-600">
+                        ₹{r.min} — ₹{r.max}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <button title="Move up" onClick={() => movePriceRange(idx, -1)} className="px-2 py-1 hover:bg-gray-200 rounded">
+                      <button
+                        title="Move up"
+                        onClick={() => movePriceRange(idx, -1)}
+                        className="px-2 py-1 hover:bg-gray-200 rounded"
+                      >
                         ▲
                       </button>
-                      <button title="Move down" onClick={() => movePriceRange(idx, 1)} className="px-2 py-1 hover:bg-gray-200 rounded">
+                      <button
+                        title="Move down"
+                        onClick={() => movePriceRange(idx, 1)}
+                        className="px-2 py-1 hover:bg-gray-200 rounded"
+                      >
                         ▼
                       </button>
-                      <button title="Edit" onClick={() => editPriceRange(idx)} className="px-2 py-1 hover:bg-gray-200 rounded">
+                      <button
+                        title="Edit"
+                        onClick={() => editPriceRange(idx)}
+                        className="px-2 py-1 hover:bg-gray-200 rounded"
+                      >
                         ✎
                       </button>
-                      <button title="Remove" onClick={() => removePriceRange(idx)} className="px-2 py-1 text-red-600 hover:bg-red-50 rounded">
+                      <button
+                        title="Remove"
+                        onClick={() => removePriceRange(idx)}
+                        className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                      >
                         ✕
                       </button>
                     </div>
@@ -462,7 +496,8 @@ const ManageFilters = () => {
         </div>
 
         <div className="mt-6 text-sm text-gray-500">
-          <strong>Tip:</strong> After saving, the Shop page will pick the updated filters. You can also manage categories from the Manage Products page — make sure values match (case-insensitive).
+          <strong>Tip:</strong> After saving, the Shop page will pick the updated filters. You can also manage
+          categories from the Manage Products page — make sure values match (case-insensitive).
         </div>
       </div>
     </div>

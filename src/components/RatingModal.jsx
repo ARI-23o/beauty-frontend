@@ -1,7 +1,7 @@
 // src/components/RatingModal.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-
+import api from "../api";
 /**
  * RatingModal
  * props:
@@ -13,7 +13,6 @@ import axios from "axios";
  *
  * NOTE: Backend endpoint used here is POST /api/ratings/:productId (adjust if your backend uses different route).
  */
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
 const RatingModal = ({ productId, initialRating = 0, initialComment = "", onClose, onSaved }) => {
   const [selected, setSelected] = useState(initialRating || 0);
@@ -41,7 +40,7 @@ const RatingModal = ({ productId, initialRating = 0, initialComment = "", onClos
     }
     setSaving(true);
     try {
-      const res = await axios.post(
+      const res = await api.post(
         `${API_BASE}/api/ratings/${productId}`,
         { rating: selected, comment },
         { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }

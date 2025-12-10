@@ -25,6 +25,10 @@ import ResetPassword from "./pages/ResetPassword";
 import RateOrder from "./pages/RateOrder"; 
 import Favorites from "./pages/Favorites";
 import TrackOrder from "./pages/TrackOrder";
+import Returns from "./pages/Returns.jsx";
+import FAQ from "./pages/FAQ.jsx";
+import Shipping from "./pages/Shipping.jsx";
+import Privacy from "./pages/Privacy.jsx";
 
 // admin
 import AdminLogin from "./admin/AdminLogin";
@@ -35,6 +39,7 @@ import ManageOrders from "./admin/pages/ManageOrders";
 import ManageUsers from "./admin/pages/ManageUsers";
 import OrderDetailAdmin from "./admin/pages/OrderDetail";
 import ManageFilters from "./admin/pages/ManageFilters";
+import ManageContacts from "./admin/pages/ManageContacts.jsx";
 
 function App() {
   const { toastMessage, setToastMessage } = useCart();
@@ -72,6 +77,10 @@ function App() {
             <Route path="/order/:id" element={<OrderDetail />} />
             <Route path="/rate-order/:token" element={<RateOrder />} />
             <Route path="/track-order/:orderId" element={<TrackOrder />} />
+            <Route path="/returns" element={<Returns />} />
+<Route path="/faq" element={<FAQ />} />
+<Route path="/shipping" element={<Shipping />} />
+<Route path="/privacy" element={<Privacy />} />
 
             {/* Admin Login */}
             <Route path="/admin" element={<AdminLogin />} />
@@ -92,6 +101,14 @@ function App() {
               element={
                 <ProtectedAdminRoute>
                   <AdminDashboard />
+                </ProtectedAdminRoute>
+              }
+            />
+             <Route
+              path="/admin/contacts"
+              element={
+                <ProtectedAdminRoute>
+                  <ManageContacts  />
                 </ProtectedAdminRoute>
               }
             />

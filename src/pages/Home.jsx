@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { useCart } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
+import api from "../api";
 
 const categories = [
   { name: "Face", image: "https://images.unsplash.com/photo-1610878180933-123728c1f8c7?auto=format&fit=crop&w=900&q=80" },

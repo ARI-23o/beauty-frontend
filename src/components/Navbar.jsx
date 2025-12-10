@@ -3,9 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { FaBars, FaSearch, FaShoppingBag, FaTimes, FaUserCircle, FaHeart } from "react-icons/fa";
 import { useCart } from "../context/CartContext";
-import axios from "axios";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+import api from "../api";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -45,37 +43,53 @@ const Navbar = () => {
     }
   };
 
+  const getUserId = () => {
+    if (!user) return null;
+    return user.id || user._id || null;
+  };
+
   useEffect(() => {
     loadUserFromStorage();
+
     const handleStorage = (e) => {
       if (e.key === "user" || e.key === "token") loadUserFromStorage();
     };
+
+    const handleAuthChanged = () => {
+      loadUserFromStorage();
+    };
+
+    const handleFavoritesChanged = () => {
+      fetchFavoritesCount();
+    };
+
     window.addEventListener("storage", handleStorage);
-    window.addEventListener("auth-changed", loadUserFromStorage);
-    window.addEventListener("favorites-changed", () => fetchFavoritesCount());
+    window.addEventListener("auth-changed", handleAuthChanged);
+    window.addEventListener("favorites-changed", handleFavoritesChanged);
+
     return () => {
       window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("auth-changed", loadUserFromStorage);
-      window.removeEventListener("favorites-changed", () => fetchFavoritesCount());
+      window.removeEventListener("auth-changed", handleAuthChanged);
+      window.removeEventListener("favorites-changed", handleFavoritesChanged);
     };
     // eslint-disable-next-line
   }, []);
 
   useEffect(() => {
-    // Whenever user changes, refresh count
+    // Whenever user changes, refresh count & history
     fetchFavoritesCount();
     fetchHistory();
     // eslint-disable-next-line
   }, [user]);
 
   const fetchFavoritesCount = async () => {
-    if (!user) {
+    const token = localStorage.getItem("token");
+    if (!token) {
       setFavoritesCount(0);
       return;
     }
     try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(`${API_BASE}/api/favorites`, {
+      const res = await api.get("/api/favorites", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setFavoritesCount(Array.isArray(res.data.favorites) ? res.data.favorites.length : 0);
@@ -94,7 +108,7 @@ const Navbar = () => {
         return;
       }
       try {
-        const res = await axios.get(`${API_BASE}/api/products?search=${encodeURIComponent(term)}`);
+        const res = await api.get(`/api/products?search=${encodeURIComponent(term)}`);
         setSuggestions(Array.isArray(res.data) ? res.data.slice(0, 6) : []);
         setShowSuggestions(true);
       } catch {
@@ -108,17 +122,31 @@ const Navbar = () => {
 
   // Load search history (server)
   const fetchHistory = async () => {
-    if (!user) {
+    const userId = getUserId();
+    if (!userId) {
       setSearchHistory([]);
       return;
     }
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${API_BASE}/api/search-history/${user.id}/history`, {
+      const res = await api.get(`/api/search-history/${userId}/history`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setSearchHistory(res.data.history || []);
-    } catch {
+
+      const raw = res.data.history || [];
+      const list = Array.isArray(raw)
+        ? raw
+            .map((h) =>
+              typeof h === "string"
+                ? h
+                : h.keyword || h.term || h.search || h.q || ""
+            )
+            .filter(Boolean)
+        : [];
+
+      setSearchHistory(list);
+    } catch (err) {
+      console.error("Navbar history load failed:", err);
       setSearchHistory([]);
     }
   };
@@ -160,12 +188,13 @@ const Navbar = () => {
   };
 
   const saveTermToHistory = async (term) => {
-    if (!user) return;
+    const userId = getUserId();
+    if (!userId) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.post(
-        `${API_BASE}/api/search-history/${user.id}/add`,
-        { keyword: term },
+      await api.post(
+        `/api/search-history/${userId}/add`,
+        { keyword: term, term },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchHistory();
@@ -175,10 +204,11 @@ const Navbar = () => {
   };
 
   const clearSearchHistory = async () => {
-    if (!user) return;
+    const userId = getUserId();
+    if (!userId) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${API_BASE}/api/search-history/${user.id}/clear`, {
+      await api.delete(`/api/search-history/${userId}/clear`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSearchHistory([]);
@@ -201,7 +231,6 @@ const Navbar = () => {
   };
 
   const handleHistoryClick = async (term) => {
-    setSearchTerm(term);
     await saveTermToHistory(term);
     setShowHistory(false);
     setShowSuggestions(false);
@@ -223,7 +252,11 @@ const Navbar = () => {
               key={item.path}
               to={item.path}
               className={({ isActive }) =>
-                `text-lg font-medium ${isActive ? "text-pink-500 border-b-2 border-pink-500 pb-1" : "text-gray-700 hover:text-pink-500"}`
+                `text-lg font-medium ${
+                  isActive
+                    ? "text-pink-500 border-b-2 border-pink-500 pb-1"
+                    : "text-gray-700 hover:text-pink-500"
+                }`
               }
             >
               {item.name}
@@ -235,10 +268,17 @@ const Navbar = () => {
         <div className="flex items-center space-x-4">
           {/* Desktop search */}
           <div className="relative hidden md:block w-64" ref={desktopSearchRef}>
-            <form onSubmit={handleSearchSubmit} className="flex items-center border rounded-full px-3 py-1 bg-white relative z-[60]">
+            <form
+              onSubmit={handleSearchSubmit}
+              className="flex items-center border rounded-full px-3 py-1 bg-white relative z-[60]"
+            >
               <input
                 type="text"
-                placeholder={searchHistory && searchHistory.length > 0 ? `Last: ${searchHistory[0]}` : "Search products..."}
+                placeholder={
+                  searchHistory && searchHistory.length > 0
+                    ? `Last: ${searchHistory[0]}`
+                    : "Search products..."
+                }
                 value={searchTerm}
                 onFocus={() => {
                   fetchHistory();
@@ -257,11 +297,14 @@ const Navbar = () => {
               <div className="absolute bg-white shadow-lg rounded-lg w-full mt-2 border z-[9999] pointer-events-auto">
                 <div className="flex justify-between items-center px-3 py-2 text-gray-500 text-sm">
                   <span>Recent Searches</span>
-                  <button onClick={clearSearchHistory} className="text-pink-500 hover:text-pink-600 text-xs font-medium">
+                  <button
+                    onClick={clearSearchHistory}
+                    className="text-pink-500 hover:text-pink-600 text-xs font-medium"
+                  >
                     Clear All
                   </button>
                 </div>
-                {searchHistory.slice(0, 1).map((h, idx) => (
+                {searchHistory.slice(0, 5).map((h, idx) => (
                   <div
                     key={idx}
                     onClick={() => handleHistoryClick(h)}
@@ -282,7 +325,12 @@ const Navbar = () => {
                     onClick={() => handleSelectProduct(p)}
                     className="flex items-center gap-3 px-3 py-2 hover:bg-pink-50 cursor-pointer"
                   >
-                    <img src={p.image || ""} alt={p.name} className="w-8 h-8 rounded object-cover" />
+                    <img
+                      src={p.image || ""}
+                      alt={p.name}
+                      className="w-8 h-8 rounded object-cover"
+                      onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/64")}
+                    />
                     <div>
                       <p className="text-sm font-medium">{p.name}</p>
                       <p className="text-xs text-gray-500">{p.category}</p>
@@ -316,7 +364,10 @@ const Navbar = () => {
           {/* Profile / Login */}
           {user ? (
             <div className="relative" ref={profileRef}>
-              <button onClick={() => setProfileOpen((p) => !p)} className="text-gray-800 hover:text-pink-500 transition">
+              <button
+                onClick={() => setProfileOpen((p) => !p)}
+                className="text-gray-800 hover:text-pink-500 transition"
+              >
                 <FaUserCircle className="text-3xl" />
               </button>
               {profileOpen && (
@@ -348,17 +399,26 @@ const Navbar = () => {
             </div>
           ) : (
             <div className="hidden md:flex items-center space-x-3">
-              <Link to="/login" className="bg-pink-500 text-white px-4 py-2 rounded-full text-sm hover:bg-pink-600">
+              <Link
+                to="/login"
+                className="bg-pink-500 text-white px-4 py-2 rounded-full text-sm hover:bg-pink-600"
+              >
                 Login
               </Link>
-              <Link to="/signup" className="border border-pink-500 text-pink-500 px-4 py-2 rounded-full text-sm hover:bg-pink-50">
+              <Link
+                to="/signup"
+                className="border border-pink-500 text-pink-500 px-4 py-2 rounded-full text-sm hover:bg-pink-50"
+              >
                 Sign Up
               </Link>
             </div>
           )}
 
           {/* Mobile hamburger */}
-          <button className="md:hidden ml-2 text-2xl" onClick={() => setMenuOpen((m) => !m)}>
+          <button
+            className="md:hidden ml-2 text-2xl"
+            onClick={() => setMenuOpen((m) => !m)}
+          >
             {menuOpen ? <FaTimes /> : <FaBars />}
           </button>
         </div>
@@ -383,16 +443,29 @@ const Navbar = () => {
 
             <nav className="mt-4 flex flex-col gap-2">
               {navItems.map((item) => (
-                <Link key={item.path} to={item.path} onClick={() => setMenuOpen(false)} className="py-2 px-3 rounded hover:bg-pink-50 text-gray-700">
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setMenuOpen(false)}
+                  className="py-2 px-3 rounded hover:bg-pink-50 text-gray-700"
+                >
                   {item.name}
                 </Link>
               ))}
               {!user && (
                 <div className="flex gap-2 mt-3">
-                  <Link to="/login" onClick={() => setMenuOpen(false)} className="flex-1 bg-pink-500 text-white py-2 rounded text-center">
+                  <Link
+                    to="/login"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex-1 bg-pink-500 text-white py-2 rounded text-center"
+                  >
                     Login
                   </Link>
-                  <Link to="/signup" onClick={() => setMenuOpen(false)} className="flex-1 border border-pink-500 text-pink-500 py-2 rounded text-center">
+                  <Link
+                    to="/signup"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex-1 border border-pink-500 text-pink-500 py-2 rounded text-center"
+                  >
                     Sign Up
                   </Link>
                 </div>

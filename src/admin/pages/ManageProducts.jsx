@@ -1,9 +1,7 @@
 // src/admin/pages/ManageProducts.jsx
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
 import { toast } from "react-toastify";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+import api from "../../api";
 
 const ManageProducts = () => {
   const [products, setProducts] = useState([]);
@@ -27,7 +25,7 @@ const ManageProducts = () => {
 
   // Persistent copies of uploaded URLs for debugging
   const [uploadedImagesUrls, setUploadedImagesUrls] = useState([]); // persistent uploaded image URLs
-  const [uploadedVideoUrl, setUploadedVideoUrl] = useState("");     // persistent uploaded video URL
+  const [uploadedVideoUrl, setUploadedVideoUrl] = useState(""); // persistent uploaded video URL
 
   const token = localStorage.getItem("adminToken");
   const axiosConfig = { headers: { Authorization: `Bearer ${token}` } };
@@ -43,7 +41,7 @@ const ManageProducts = () => {
   ----------------------------------------------------------*/
   const fetchProducts = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/api/products`);
+      const res = await api.get("/api/products");
       const data = Array.isArray(res.data) ? res.data : [];
 
       setProducts(data);
@@ -120,19 +118,14 @@ const ManageProducts = () => {
         const fd = new FormData();
         tempImages.forEach((t) => fd.append("images", t.file));
 
-        const res = await axios.post(
-          `${API_BASE}/api/products/upload-images`,
-          fd,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const res = await api.post("/api/products/upload-images", fd, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         uploadedImages = res.data.images || [];
-        // debug
         console.log("Uploaded images (cloudinary):", uploadedImages);
       }
 
@@ -141,16 +134,12 @@ const ManageProducts = () => {
         const fd = new FormData();
         fd.append("video", tempVideo.file);
 
-        const res = await axios.post(
-          `${API_BASE}/api/products/upload-video`,
-          fd,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const res = await api.post("/api/products/upload-video", fd, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
         uploadedVideo = res.data.video || "";
         console.log("Uploaded video (cloudinary):", uploadedVideo);
@@ -210,7 +199,9 @@ const ManageProducts = () => {
     e.preventDefault();
 
     // If user hasn't clicked "Upload Selected" but there are temp files, upload them now.
-    const { images: newImgs, video: newVid } = await uploadSelectedFiles({ persistToForm: true });
+    const { images: newImgs, video: newVid } = await uploadSelectedFiles({
+      persistToForm: true,
+    });
 
     // final images: combine already-saved (in formData.images) with newly uploaded (newImgs) and limit to 5
     const finalImages = [...(formData.images || []), ...(newImgs || [])].slice(0, 5);
@@ -237,23 +228,14 @@ const ManageProducts = () => {
       countInStock: Number(formData.countInStock || 0),
     };
 
-    // debug: show payload in console so you can verify images array before sending
     console.log("Saving product payload:", payload);
 
     try {
       if (editingId) {
-        await axios.put(
-          `${API_BASE}/api/products/${editingId}`,
-          payload,
-          axiosConfig
-        );
+        await api.put(`/api/products/${editingId}`, payload, axiosConfig);
         toast.success("Product updated");
       } else {
-        await axios.post(
-          `${API_BASE}/api/products`,
-          payload,
-          axiosConfig
-        );
+        await api.post("/api/products", payload, axiosConfig);
         toast.success("Product added");
       }
 
@@ -313,7 +295,7 @@ const ManageProducts = () => {
     if (!window.confirm("Delete this product?")) return;
 
     try {
-      await axios.delete(`${API_BASE}/api/products/${id}`, axiosConfig);
+      await api.delete(`/api/products/${id}`, axiosConfig);
       toast.success("Product deleted");
       fetchProducts();
     } catch (err) {
@@ -441,7 +423,6 @@ const ManageProducts = () => {
             <button
               type="button"
               onClick={async () => {
-                // explicitly persist uploaded URLs into the form so they remain after clearing previews
                 const result = await uploadSelectedFiles({ persistToForm: true });
                 if ((result.images && result.images.length) || result.video) {
                   toast.success("Files uploaded and saved to form");
@@ -472,29 +453,39 @@ const ManageProducts = () => {
 
           {tempVideo && (
             <div className="mt-3">
-              <video src={tempVideo.preview} controls className="max-h-40 rounded"></video>
+              <video
+                src={tempVideo.preview}
+                controls
+                className="max-h-40 rounded"
+              ></video>
             </div>
           )}
 
-          {/* ALWAYS-VISIBLE DEBUG THUMBNAILS (Option A) */}
+          {/* ALWAYS-VISIBLE DEBUG THUMBNAILS */}
           <div className="mt-4">
             <label className="font-medium">Uploaded Images (debug)</label>
             <div className="flex gap-2 mt-2">
-              {
-                // use uploadedImagesUrls first; fallback to formData.images so thumbnails show for edit states too
-                (uploadedImagesUrls.length ? uploadedImagesUrls : formData.images || []).map((u, i) => (
-                  <div key={i} className="w-16 h-16 overflow-hidden rounded border">
-                    <img
-                      src={u}
-                      alt={`uploaded-${i}`}
-                      className="w-full h-full object-cover"
-                    />
+              {(uploadedImagesUrls.length
+                ? uploadedImagesUrls
+                : formData.images || []
+              ).map((u, i) => (
+                <div
+                  key={i}
+                  className="w-16 h-16 overflow-hidden rounded border"
+                >
+                  <img
+                    src={u}
+                    alt={`uploaded-${i}`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+              {uploadedImagesUrls.length === 0 &&
+                (formData.images || []).length === 0 && (
+                  <div className="text-sm text-gray-500 ml-1">
+                    No uploaded images yet
                   </div>
-                ))
-              }
-              {((uploadedImagesUrls.length === 0) && (formData.images || []).length === 0) && (
-                <div className="text-sm text-gray-500 ml-1">No uploaded images yet</div>
-              )}
+                )}
             </div>
           </div>
         </div>
@@ -503,7 +494,11 @@ const ManageProducts = () => {
         <div className="md:col-span-2 grid grid-cols-6 gap-2 mt-2">
           {formData.images.map((img, i) => (
             <div key={i} className="relative">
-              <img src={img} className="h-20 w-full object-cover rounded" alt={`saved-${i}`} />
+              <img
+                src={img}
+                className="h-20 w-full object-cover rounded"
+                alt={`saved-${i}`}
+              />
               <button
                 type="button"
                 onClick={() =>
@@ -523,7 +518,11 @@ const ManageProducts = () => {
         {/* SAVED VIDEO */}
         {formData.video && (
           <div className="md:col-span-2 mt-3">
-            <video src={formData.video} controls className="max-h-40 w-full rounded"></video>
+            <video
+              src={formData.video}
+              controls
+              className="max-h-40 w-full rounded"
+            ></video>
             <button
               type="button"
               onClick={() => setFormData((p) => ({ ...p, video: "" }))}

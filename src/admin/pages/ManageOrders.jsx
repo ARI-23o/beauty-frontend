@@ -1,9 +1,8 @@
+// src/admin/pages/ManageOrders.jsx
 import React, { useEffect, useState, useMemo } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+import api from "../../api";
 
 export default function ManageOrders() {
   const navigate = useNavigate();
@@ -28,7 +27,8 @@ export default function ManageOrders() {
 
   const fetchOrders = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/api/orders`, axiosConfig);
+      // ✅ use relative path with api (baseURL is set in src/api.js)
+      const res = await api.get("/api/orders", axiosConfig);
       setOrders(res.data || []);
     } catch (err) {
       console.error("Failed to load orders:", err?.response?.data || err.message);
@@ -48,7 +48,8 @@ export default function ManageOrders() {
     if (!s) return "bg-gray-100 text-gray-800";
     const sl = s.toLowerCase();
     if (sl.includes("delivered")) return "bg-green-100 text-green-800";
-    if (sl.includes("shipped") || sl.includes("out for delivery") || sl.includes("out_for_delivery")) return "bg-yellow-100 text-yellow-800";
+    if (sl.includes("shipped") || sl.includes("out for delivery") || sl.includes("out_for_delivery"))
+      return "bg-yellow-100 text-yellow-800";
     if (sl.includes("processing")) return "bg-blue-100 text-blue-800";
     if (sl.includes("pending")) return "bg-gray-100 text-gray-800";
     if (sl.includes("cancel")) return "bg-red-100 text-red-800";
@@ -77,7 +78,10 @@ export default function ManageOrders() {
     // COURIER filter
     if (courierFilter !== "All") {
       data = data.filter((o) => {
-        const c = (o.trackingMetadata && o.trackingMetadata.courier) || (o.tracking && o.tracking[0] && o.tracking[0].courier) || "";
+        const c =
+          (o.trackingMetadata && o.trackingMetadata.courier) ||
+          (o.tracking && o.tracking[0] && o.tracking[0].courier) ||
+          "";
         return c && c.toLowerCase().includes(courierFilter.toLowerCase());
       });
     }
@@ -135,7 +139,7 @@ export default function ManageOrders() {
       if (statusFilter && statusFilter !== "All") params.set("status", statusFilter);
       if (courierFilter && courierFilter !== "All") params.set("courier", courierFilter);
 
-      const res = await axios.get(`${API_BASE}/api/admin/export/orders?${params.toString()}`, {
+      const res = await api.get(`/api/admin/export/orders?${params.toString()}`, {
         headers: { Authorization: `Bearer ${adminToken}` },
         responseType: "blob",
         timeout: 60000,
@@ -160,18 +164,27 @@ export default function ManageOrders() {
 
       {/* FILTER BAR */}
       <div className="bg-white shadow rounded-lg p-4 mb-4 flex flex-wrap gap-3 items-center">
-
         {/* Search */}
         <input
           type="text"
           placeholder="Search Order ID, Name, Email, Phone, Tracking..."
           className="border px-3 py-2 rounded flex-1 min-w-[260px]"
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
         />
 
         {/* Status Filter */}
-        <select className="border px-3 py-2 rounded" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
+        <select
+          className="border px-3 py-2 rounded"
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setPage(1);
+          }}
+        >
           <option>All</option>
           <option>Pending</option>
           <option>Processing</option>
@@ -181,12 +194,25 @@ export default function ManageOrders() {
         </select>
 
         {/* Courier Filter */}
-        <select className="border px-3 py-2 rounded" value={courierFilter} onChange={(e) => { setCourierFilter(e.target.value); setPage(1); }}>
-          {couriers.map((c) => <option key={c}>{c}</option>)}
+        <select
+          className="border px-3 py-2 rounded"
+          value={courierFilter}
+          onChange={(e) => {
+            setCourierFilter(e.target.value);
+            setPage(1);
+          }}
+        >
+          {couriers.map((c) => (
+            <option key={c}>{c}</option>
+          ))}
         </select>
 
         {/* Sorting */}
-        <select className="border px-3 py-2 rounded" value={sort} onChange={(e) => setSort(e.target.value)}>
+        <select
+          className="border px-3 py-2 rounded"
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+        >
           <option value="newest">Newest First</option>
           <option value="oldest">Oldest First</option>
           <option value="high">Amount High → Low</option>
@@ -194,9 +220,24 @@ export default function ManageOrders() {
         </select>
 
         <div className="ml-auto flex gap-2">
-          <button onClick={() => handleExport("csv")} className="bg-gray-800 text-white px-3 py-2 rounded">Export CSV</button>
-          <button onClick={() => handleExport("excel")} className="bg-green-600 text-white px-3 py-2 rounded">Export Excel</button>
-          <button onClick={() => navigate("/admin/analytics")} className="bg-indigo-600 text-white px-3 py-2 rounded">Analytics</button>
+          <button
+            onClick={() => handleExport("csv")}
+            className="bg-gray-800 text-white px-3 py-2 rounded"
+          >
+            Export CSV
+          </button>
+          <button
+            onClick={() => handleExport("excel")}
+            className="bg-green-600 text-white px-3 py-2 rounded"
+          >
+            Export Excel
+          </button>
+          <button
+            onClick={() => navigate("/admin/analytics")}
+            className="bg-indigo-600 text-white px-3 py-2 rounded"
+          >
+            Analytics
+          </button>
         </div>
       </div>
 
@@ -224,29 +265,61 @@ export default function ManageOrders() {
                   <td className="border px-3 py-2">
                     {order.userId?.name || order.shippingAddress?.fullName}
                     <br />
-                    <span className="text-xs text-gray-500">{order.userId?.email || order.shippingAddress?.email}</span>
+                    <span className="text-xs text-gray-500">
+                      {order.userId?.email || order.shippingAddress?.email}
+                    </span>
                   </td>
 
-                  <td className="border px-3 py-2 font-semibold">₹{order.totalAmount}</td>
-
-                  <td className="border px-3 py-2">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${statusBadgeClass(order.status)}`}>{order.status}</span>
+                  <td className="border px-3 py-2 font-semibold">
+                    ₹{order.totalAmount}
                   </td>
 
-                  <td className="border px-3 py-2">{new Date(order.createdAt).toLocaleDateString()}</td>
-
-                  <td className="border px-3 py-2 text-sm">{order.trackingMetadata?.courier || (order.tracking && order.tracking[0]?.courier) || "—"}</td>
-
-                  <td className="border px-3 py-2 text-xs">{order.trackingMetadata?.trackingNumber || (order.tracking && order.tracking[0]?.trackingNumber) || "—"}</td>
+                  <td className="border px-3 py-2">
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${statusBadgeClass(
+                        order.status
+                      )}`}
+                    >
+                      {order.status}
+                    </span>
+                  </td>
 
                   <td className="border px-3 py-2">
-                    <button onClick={() => navigate(`/admin/orders/detail/${order._id}`)} className="bg-pink-600 text-white px-3 py-1 rounded">View / Track</button>
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </td>
+
+                  <td className="border px-3 py-2 text-sm">
+                    {order.trackingMetadata?.courier ||
+                      (order.tracking && order.tracking[0]?.courier) ||
+                      "—"}
+                  </td>
+
+                  <td className="border px-3 py-2 text-xs">
+                    {order.trackingMetadata?.trackingNumber ||
+                      (order.tracking && order.tracking[0]?.trackingNumber) ||
+                      "—"}
+                  </td>
+
+                  <td className="border px-3 py-2">
+                    <button
+                      onClick={() =>
+                        navigate(`/admin/orders/detail/${order._id}`)
+                      }
+                      className="bg-pink-600 text-white px-3 py-1 rounded"
+                    >
+                      View / Track
+                    </button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="8" className="text-center py-6 text-gray-500 border">No matching orders found</td>
+                <td
+                  colSpan="8"
+                  className="text-center py-6 text-gray-500 border"
+                >
+                  No matching orders found
+                </td>
               </tr>
             )}
           </tbody>
@@ -257,7 +330,17 @@ export default function ManageOrders() {
       {totalPages > 1 && (
         <div className="flex justify-center mt-5 gap-2">
           {Array.from({ length: totalPages }).map((_, index) => (
-            <button key={index} onClick={() => setPage(index + 1)} className={`px-3 py-1 rounded border ${page === index + 1 ? "bg-pink-600 text-white" : "bg-white text-gray-700"}`}>{index + 1}</button>
+            <button
+              key={index}
+              onClick={() => setPage(index + 1)}
+              className={`px-3 py-1 rounded border ${
+                page === index + 1
+                  ? "bg-pink-600 text-white"
+                  : "bg-white text-gray-700"
+              }`}
+            >
+              {index + 1}
+            </button>
           ))}
         </div>
       )}

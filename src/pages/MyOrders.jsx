@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
+import api from "../api";
+
 
 const MyOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -19,10 +21,10 @@ const MyOrders = () => {
       }
 
       // ✅ Corrected endpoint and header
-      const response = await axios.get("http://localhost:5000/api/orders/my-orders", {
+      const response = await api.get("http://localhost:5000/api/orders/my-orders", {
         headers: { Authorization: `Bearer ${token}` },
       });
-
+    
       setOrders(response.data || []);
     } catch (error) {
       console.error("❌ Failed to fetch user orders:", error);

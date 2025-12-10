@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import api from "../api";
 
-const API_BASE = "http://localhost:5000";
+
+
 
 const ManageFilters = () => {
   const [filters, setFilters] = useState({
@@ -21,7 +23,7 @@ const ManageFilters = () => {
   // Load current filter settings
   const loadFilters = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/api/filters`);
+      const res = await api.get(`${API_BASE}/api/filters`);
       setFilters(res.data);
     } catch (err) {
       toast.error("Failed to load filters");
@@ -34,7 +36,7 @@ const ManageFilters = () => {
 
   const saveFilters = async () => {
     try {
-      await axios.put(`${API_BASE}/api/filters`, filters, axiosConfig);
+      await api.put(`${API_BASE}/api/filters`, filters, axiosConfig);
       toast.success("Filters updated successfully!");
       loadFilters();
     } catch (err) {

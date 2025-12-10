@@ -1,8 +1,12 @@
 // src/api.js
 import axios from "axios";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
+console.log("✅ API BASE:", API_BASE); // for debug
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE, // ✅ AUTO SWITCHES URL
+  baseURL: API_BASE,
   withCredentials: true,
 });
 

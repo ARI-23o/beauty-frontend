@@ -2,8 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+import api from "../api";
 
 const statusColor = (s) => {
   if (!s) return "bg-gray-100 text-gray-800";
@@ -24,9 +23,12 @@ export default function TrackOrder() {
     const fetchTracking = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`${API_BASE}/api/tracking/order/${orderId}`, {
+
+        // ✅ FIXED: removed API_BASE, use relative path with api
+        const res = await api.get(`/api/tracking/order/${orderId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
+
         setTracking(res.data);
       } catch (e) {
         setErr("No tracking information found for this order.");
@@ -73,11 +75,20 @@ export default function TrackOrder() {
                     <div className="text-sm text-gray-600">{h.message}</div>
                     {h.location && <div className="text-xs text-gray-500">Location: {h.location}</div>}
                   </div>
-                  <div className="text-xs text-gray-500">{new Date(h.timestamp).toLocaleString()}</div>
+                  <div className="text-xs text-gray-500">
+                    {h.timestamp ? new Date(h.timestamp).toLocaleString() : ""}
+                  </div>
                 </div>
                 {h.proof_url && (
                   <div className="mt-2">
-                    <a href={h.proof_url} target="_blank" rel="noreferrer" className="text-pink-600 underline">View proof / media</a>
+                    <a
+                      href={h.proof_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-pink-600 underline"
+                    >
+                      View proof / media
+                    </a>
                   </div>
                 )}
               </div>

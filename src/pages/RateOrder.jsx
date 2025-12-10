@@ -3,12 +3,12 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import RatingStars from "../components/RatingStars";
+import api from "../api";
 
 // ❌ Vite does NOT support process.env
 // const API_BASE = process.env.REACT_APP_API_BASE;
 
-// ✅ Correct Vite version (with fallback)
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+// ✅ we now use the shared api instance with baseURL set in src/api.js
 
 const RateOrder = () => {
   const { token } = useParams();
@@ -27,7 +27,8 @@ const RateOrder = () => {
   useEffect(() => {
     const validate = async () => {
       try {
-        const res = await axios.get(`${API_BASE}/api/ratings/validate/${token}`);
+        // ✅ removed API_BASE, use relative path with api
+        const res = await api.get(`/api/ratings/validate/${token}`);
         setOrderInfo(res.data);
       } catch (err) {
         console.error("Invalid rating token:", err);
@@ -48,7 +49,8 @@ const RateOrder = () => {
     setSubmitting(true);
 
     try {
-      const res = await axios.post(`${API_BASE}/api/ratings/submit`, {
+      // ✅ removed API_BASE, use relative path with api
+      const res = await api.post(`/api/ratings/submit`, {
         token,
         rating,
         comment,

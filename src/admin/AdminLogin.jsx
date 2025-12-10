@@ -1,29 +1,45 @@
+// src/admin/AdminLogin.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../api"; // ✅ use central axios instance
 
 function AdminLogin() {
   const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setMessage("");
+    setLoading(true);
 
     try {
-      const res = await axios.post("http://localhost:5000/api/admin/login", {
+      // ✅ API_BASE automatically handled inside api.js
+      const res = await api.post("/api/admin/login", {
         email,
         password,
       });
 
-      localStorage.setItem("adminToken", res.data.token);
+      const token = res.data?.token;
+      if (!token) {
+        setMessage("Login failed — no token received.");
+        setLoading(false);
+        return;
+      }
+
+      // Save admin token
+      localStorage.setItem("adminToken", token);
+
       setMessage("Login successful!");
       navigate("/admin/dashboard");
     } catch (err) {
-      console.error("Login error:", err);
-      setMessage("Invalid email or password.");
+      console.error("Admin Login Error:", err?.response?.data || err.message);
+      setMessage(err?.response?.data?.message || "Invalid email or password.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -33,6 +49,7 @@ function AdminLogin() {
         <h2 className="text-2xl font-bold mb-6 text-center">Admin Login</h2>
 
         <form onSubmit={handleLogin}>
+          {/* Email */}
           <div className="mb-4">
             <label className="block mb-1 font-medium">Email</label>
             <input
@@ -45,6 +62,7 @@ function AdminLogin() {
             />
           </div>
 
+          {/* Password */}
           <div className="mb-6">
             <label className="block mb-1 font-medium">Password</label>
             <input
@@ -59,13 +77,16 @@ function AdminLogin() {
 
           <button
             type="submit"
-            className="w-full bg-black text-white py-2 rounded hover:bg-gray-800"
+            disabled={loading}
+            className="w-full bg-black text-white py-2 rounded hover:bg-gray-800 transition"
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
-        {message && <p className="text-center mt-4 text-red-500">{message}</p>}
+        {message && (
+          <p className="text-center mt-4 text-red-500 font-medium">{message}</p>
+        )}
       </div>
     </div>
   );

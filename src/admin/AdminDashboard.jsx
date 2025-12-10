@@ -1,76 +1,95 @@
-import React from "react";
+// src/admin/AdminLogin.jsx
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import AdminLayout from "./AdminLayout";
+import api from "../api"; // ✅ use central axios instance
 
-/**
- * AdminDashboard
- * - Uses AdminLayout so the Sidebar is visible.
- * - Adds a "Manage Filters" button (pink theme per request).
- */
-
-function AdminDashboard() {
+function AdminLogin() {
   const navigate = useNavigate();
 
-  const logout = () => {
-    localStorage.removeItem("adminToken");
-    navigate("/admin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setMessage("");
+    setLoading(true);
+
+    try {
+      // ✅ API_BASE automatically handled inside api.js
+      const res = await api.post("/api/admin/login", {
+        email,
+        password,
+      });
+
+      const token = res.data?.token;
+      if (!token) {
+        setMessage("Login failed — no token received.");
+        setLoading(false);
+        return;
+      }
+
+      // Save admin token
+      localStorage.setItem("adminToken", token);
+
+      setMessage("Login successful!");
+      navigate("/admin/dashboard");
+    } catch (err) {
+      console.error("Admin Login Error:", err?.response?.data || err.message);
+      setMessage(err?.response?.data?.message || "Invalid email or password.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <AdminLayout>
-      <div className="p-10">
-        <h1 className="text-3xl font-bold mb-6 text-gray-800">Admin Dashboard</h1>
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="w-full max-w-sm p-8 bg-white rounded-lg shadow">
+        <h2 className="text-2xl font-bold mb-6 text-center">Admin Login</h2>
 
-        <div className="flex flex-wrap gap-4 mb-6">
+        <form onSubmit={handleLogin}>
+          {/* Email */}
+          <div className="mb-4">
+            <label className="block mb-1 font-medium">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full border p-2 rounded"
+              placeholder="admin@example.com"
+              required
+            />
+          </div>
+
+          {/* Password */}
+          <div className="mb-6">
+            <label className="block mb-1 font-medium">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full border p-2 rounded"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+
           <button
-            onClick={() => navigate("/admin/products")}
-            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition"
+            type="submit"
+            disabled={loading}
+            className="w-full bg-black text-white py-2 rounded hover:bg-gray-800 transition"
           >
-            Manage Products
+            {loading ? "Logging in..." : "Login"}
           </button>
+        </form>
 
-          <button
-            onClick={() => navigate("/admin/users")}
-            className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 transition"
-          >
-            Manage Users
-          </button>
-
-          <button
-            onClick={() => navigate("/admin/orders")}
-            className="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700 transition"
-          >
-            Manage Orders
-          </button>
-
-          {/* Pink themed Manage Filters button (per your choice B) */}
-          <button
-            onClick={() => navigate("/admin/manage-filters")}
-            className="bg-pink-600 text-white px-4 py-2 rounded shadow hover:bg-pink-700 transition"
-          >
-            Manage Filters
-          </button>
-        </div>
-
-        <div className="mt-6">
-          <button
-            onClick={logout}
-            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
-          >
-            Logout
-          </button>
-        </div>
-
-        <div className="mt-10 text-sm text-gray-600">
-          <p>
-            Quick links: use the buttons above to manage products, users, orders
-            and filters. The &quot;Manage Filters&quot; page lets you edit categories,
-            brands and price ranges that the Shop uses for filtering.
-          </p>
-        </div>
+        {message && (
+          <p className="text-center mt-4 text-red-500 font-medium">{message}</p>
+        )}
       </div>
-    </AdminLayout>
+    </div>
   );
 }
 
-export default AdminDashboard;
+export default AdminLogin;

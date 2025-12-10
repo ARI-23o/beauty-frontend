@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import api from "../api";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -11,19 +12,14 @@ const ForgotPassword = () => {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json();
-      setMessage(data.message);
+      const res = await api.post("/api/auth/forgot-password", { email });
+      setMessage(res.data?.message || "If this email exists, a link was sent.");
     } catch (err) {
+      console.error("Forgot password error:", err);
       setMessage("❌ Something went wrong.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -32,13 +28,9 @@ const ForgotPassword = () => {
         onSubmit={handleForgot}
         className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md border border-pink-100"
       >
-        <h2 className="text-2xl font-semibold text-center text-pink-600 mb-6">
-          Reset Password
-        </h2>
+        <h2 className="text-2xl font-semibold text-center text-pink-600 mb-6">Reset Password</h2>
 
-        <p className="text-gray-600 text-sm mb-4">
-          Enter your registered email. We’ll send you a reset link.
-        </p>
+        <p className="text-gray-600 text-sm mb-4">Enter your registered email. We’ll send you a reset link.</p>
 
         <input
           type="email"
@@ -57,9 +49,7 @@ const ForgotPassword = () => {
           {loading ? "Sending..." : "Send Reset Link"}
         </button>
 
-        {message && (
-          <p className="mt-4 text-center text-sm text-gray-700">{message}</p>
-        )}
+        {message && <p className="mt-4 text-center text-sm text-gray-700">{message}</p>}
       </form>
     </div>
   );

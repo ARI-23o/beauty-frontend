@@ -1,15 +1,12 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import api from "../api";
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
   const [recentlyAddedId, setRecentlyAddedId] = useState(null);
-
-  // ✅ Add-To-Cart Toast
   const [toastMessage, setToastMessage] = useState("");
-
-  // ✅ Loyalty System
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
 
   const calculateEarnedPoints = (amount) => Math.floor(amount * 0.02);
@@ -27,20 +24,20 @@ export const CartProvider = ({ children }) => {
   const firstLoadDone = useRef(false);
   const getId = (p) => p?.productId || p?._id || p?.id;
 
-  /* ✅ Load cart once */
   useEffect(() => {
     const loadCart = async () => {
-      if (!token || !userId) return;
+      if (!token || !userId) {
+        firstLoadDone.current = true;
+        return;
+      }
 
       try {
-        const res = await fetch(`http://localhost:5000/api/users/${userId}/cart`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await api.get(`/api/users/${userId}/cart`);
+        const data = res.data || {};
+        const rawCart = data.cart || data || [];
 
-        const data = await res.json();
-
-        if (Array.isArray(data.cart)) {
-          const fixedCart = data.cart.map((item) => {
+        if (Array.isArray(rawCart)) {
+          const fixedCart = rawCart.map((item) => {
             const pid =
               item.productId ||
               item._id ||
@@ -52,6 +49,7 @@ export const CartProvider = ({ children }) => {
               productId: pid,
               _id: pid,
               id: pid,
+              quantity: item.quantity || 1,
             };
           });
 
@@ -67,37 +65,23 @@ export const CartProvider = ({ children }) => {
     loadCart();
   }, [token, userId]);
 
-  /* ✅ Sync cart to server */
   useEffect(() => {
     const saveCart = async () => {
       if (!token || !userId) return;
       if (!firstLoadDone.current) return;
 
       try {
-        await fetch(`http://localhost:5000/api/users/${userId}/cart`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ cart: cartItems }),
-        });
+        await api.put(`/api/users/${userId}/cart`, { cart: cartItems });
       } catch (err) {
         console.error("Error saving cart:", err);
       }
     };
 
     saveCart();
-  }, [cartItems]);
+  }, [cartItems, token, userId]);
 
-  /* ✅ Add to Cart (productId enforced + quantity increment fix ✅) */
   const addToCart = (product) => {
-    let pid =
-      product.productId ||
-      product._id ||
-      product.id ||
-      product.id?._id ||
-      null;
+    let pid = product.productId || product._id || product.id || null;
 
     if (!pid) {
       pid = `${product.name}-${product.price}-${Date.now()}`;
@@ -115,13 +99,11 @@ export const CartProvider = ({ children }) => {
       const exists = prev.find((i) => i.productId === pid);
 
       if (exists) {
-        // ✅ ✅ FIX — Increase quantity for existing product
         return prev.map((i) =>
-          i.productId === pid ? { ...i, quantity: i.quantity + 1 } : i
+          i.productId === pid ? { ...i, quantity: (i.quantity || 1) + 1 } : i
         );
       }
 
-      // ✅ Trigger toast for new item only
       setToastMessage(product.name);
       setRecentlyAddedId(pid);
 
@@ -129,39 +111,29 @@ export const CartProvider = ({ children }) => {
     });
   };
 
-  /* ✅ Remove Qty (fixed productId logic) */
   const removeFromCart = (id) => {
     setCartItems((prev) =>
       prev
         .map((item) =>
           item.productId === id
-            ? { ...item, quantity: Math.max(0, item.quantity - 1) }
+            ? { ...item, quantity: Math.max(0, (item.quantity || 1) - 1) }
             : item
         )
-        .filter((i) => i.quantity > 0)
+        .filter((i) => (i.quantity || 0) > 0)
     );
   };
 
-  /* ✅ Delete Item (fixed productId logic) */
   const deleteFromCart = (id) => {
     setCartItems((prev) => prev.filter((i) => i.productId !== id));
   };
 
-  /* ✅ Clear Cart */
   const clearCart = async () => {
     setCartItems([]);
 
     if (!token || !userId) return;
 
     try {
-      await fetch(`http://localhost:5000/api/users/${userId}/cart`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ cart: [] }),
-      });
+      await api.put(`/api/users/${userId}/cart`, { cart: [] });
     } catch (err) {
       console.error("Error clearing cart:", err);
     }
@@ -170,7 +142,7 @@ export const CartProvider = ({ children }) => {
   const clearCartOnLogout = () => setCartItems([]);
 
   const totalAmount = cartItems.reduce(
-    (sum, i) => sum + i.price * i.quantity,
+    (sum, i) => sum + (i.price || 0) * (i.quantity || 0),
     0
   );
 
@@ -188,12 +160,9 @@ export const CartProvider = ({ children }) => {
         setRecentlyAddedId,
         toastMessage,
         setToastMessage,
-
-        // ✅ Loyalty
         loyaltyPoints,
         addLoyaltyPoints,
         calculateEarnedPoints,
-
         isInCart: (id) => cartItems.some((i) => getId(i) === id),
       }}
     >
@@ -203,3 +172,4 @@ export const CartProvider = ({ children }) => {
 };
 
 export const useCart = () => useContext(CartContext);
+export default CartContext;

@@ -13,10 +13,14 @@ const api = axios.create({
   },
 });
 
-// Add token automatically if present (for user + admin)
+// Add token automatically if present (ADMIN FIRST, then USER)
 api.interceptors.request.use((config) => {
   try {
-    const token = localStorage.getItem("token") || localStorage.getItem("adminToken");
+    const adminToken = localStorage.getItem("adminToken");
+    const userToken = localStorage.getItem("token");
+
+    const token = adminToken || userToken; // 🔑 IMPORTANT FIX
+
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }

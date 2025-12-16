@@ -89,7 +89,7 @@ const Navbar = () => {
       return;
     }
     try {
-      const res = await api.get("/api/favorites", {
+      const res = await api.get("/favorites", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setFavoritesCount(Array.isArray(res.data.favorites) ? res.data.favorites.length : 0);

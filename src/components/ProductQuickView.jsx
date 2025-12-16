@@ -59,7 +59,7 @@ const ProductQuickView = ({ product, isOpen, onClose }) => {
   const loadRatings = async () => {
     if (!productId) return;
     try {
-      const res = await api.get(`${API_BASE}/api/ratings/product/${productId}`);
+      const res = await api.get('/ratings/product/${productId}`);
       setAvg(res.data?.avg ?? 0);
       setCount(res.data?.count ?? 0);
     } catch {
@@ -74,9 +74,10 @@ const ProductQuickView = ({ product, isOpen, onClose }) => {
       const token = localStorage.getItem("token");
       if (!token) return setFavorited(false);
 
-      const res = await api.get(`${API_BASE}/api/favorites`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get(`/favorites`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
 
       const favs = Array.isArray(res.data.favorites)
         ? res.data.favorites.map((f) => f._id || f.id)
@@ -113,13 +114,13 @@ const ProductQuickView = ({ product, isOpen, onClose }) => {
     try {
       if (!favorited) {
         await api.post(
-          `${API_BASE}/api/favorites/${productId}`,
+          `/favorites/${productId}`,
           {},
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setFavorited(true);
       } else {
-        await api.delete(`${API_BASE}/api/favorites/${productId}`, {
+        await api.delete(`/favorites/${productId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setFavorited(false);

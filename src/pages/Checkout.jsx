@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import api from "../api";
+
 const Checkout = () => {
   const {
     cartItems,
@@ -16,9 +16,10 @@ const Checkout = () => {
 
   const navigate = useNavigate();
 
-  // --- Decode JWT to get basic user info ---
+  // Decode token
   const token = localStorage.getItem("token");
   let loggedInUser = null;
+
   if (token) {
     try {
       const payload = JSON.parse(atob(token.split(".")[1]));
@@ -28,16 +29,14 @@ const Checkout = () => {
         name: payload.name || payload.fullName || "",
       };
     } catch {
-      // ignore token decode errors
+      // ignore
     }
   }
 
-  // Redirect to login if no token
   useEffect(() => {
     if (!token) navigate("/login");
   }, [token, navigate]);
 
-  // --- Form state ---
   const [formData, setFormData] = useState({
     fullName: loggedInUser?.name || "",
     email: loggedInUser?.email || "",
@@ -52,15 +51,10 @@ const Checkout = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [earnedPoints, setEarnedPoints] = useState(0);
 
-  // Loyalty points preview
   useEffect(() => {
     setEarnedPoints(calculateEarnedPoints(totalAmount));
   }, [totalAmount, calculateEarnedPoints]);
 
-  const formatPrice = (amount) =>
-    amount.toLocaleString("en-IN", { style: "currency", currency: "INR" });
-
-  // --- Validators ---
   const validators = {
     fullName: (v) =>
       /^[A-Za-z ]+$/.test(v) ? "" : "Full name should contain only alphabets",
@@ -88,86 +82,67 @@ const Checkout = () => {
     const { name, value } = e.target;
     setFormData((p) => ({ ...p, [name]: value }));
     if (validators[name]) {
-      const err = validators[name](value);
-      setErrors((prev) => ({ ...prev, [name]: err }));
+      setErrors((p) => ({ ...p, [name]: validators[name](value) }));
     }
   };
 
-  // Build normalized order items with productId
   const buildOrderItems = () =>
     cartItems.map((item) => ({
-      productId: item.productId || item._id || item.id, // <- critical fix
+      productId: item.productId || item._id || item.id,
       name: item.name,
       price: item.price,
       quantity: item.quantity,
       image: item.image,
     }));
 
-  // --- COD ---
+  // COD ORDER
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
     if (!validateAll()) return;
 
-    const orderData = {
-      userId: loggedInUser.id,
-      email: loggedInUser.email,
-      items: buildOrderItems(),
-      totalAmount,
-      shippingAddress: { ...formData },
-      paymentMethod: "COD",
-      paymentStatus: "Pending",
-    };
-
     try {
       setIsLoading(true);
 
-      const response = await fetch("http://localhost:5000/api/orders/checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(orderData),
+      await api.post("/api/orders/checkout", {
+        userId: loggedInUser.id,
+        email: loggedInUser.email,
+        items: buildOrderItems(),
+        totalAmount,
+        shippingAddress: { ...formData },
+        paymentMethod: "COD",
+        paymentStatus: "Pending",
       });
 
-      const data = await response.json();
+      const pts = addLoyaltyPoints(totalAmount);
+      clearCart();
 
-      if (response.ok) {
-        const pts = addLoyaltyPoints(totalAmount);
-        clearCart();
-        navigate("/thankyou", {
-          state: {
-            name: formData.fullName,
-            total: totalAmount,
-            earnedPoints: pts,
-          },
-        });
-      } else {
-        alert(`❌ ${data.message || "Order placement failed."}`);
-      }
+      navigate("/thankyou", {
+        state: {
+          name: formData.fullName,
+          total: totalAmount,
+          earnedPoints: pts,
+        },
+      });
     } catch (err) {
       console.error("Checkout Error:", err);
-      alert("Something went wrong while placing your order.");
+      alert("Order placement failed.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- Razorpay ---
+  // RAZORPAY
   const handleRazorpayPayment = async () => {
     if (!validateAll()) return;
 
     try {
       setIsLoading(true);
 
-      const { data } = await api.post(
-        "http://localhost:5000/api/payments/create-order",
-        {
-          amount: totalAmount,
-          receipt: "rcpt_" + Date.now(),
-          notes: { userId: loggedInUser.id },
-        }
-      );
+      const { data } = await api.post("/api/payments/create-order", {
+        amount: totalAmount,
+        receipt: "rcpt_" + Date.now(),
+        notes: { userId: loggedInUser.id },
+      });
 
       const { order } = data;
 
@@ -180,55 +155,39 @@ const Checkout = () => {
         description: "Order Payment",
         handler: async function (response) {
           try {
-            const verifyRes = await api.post(
-              "http://localhost:5000/api/payments/verify-payment",
-              {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              }
-            );
+            const verifyRes = await api.post("/api/payments/verify-payment", {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
 
             if (verifyRes.data.success) {
-              // Build a fresh paid order payload
-              const paidOrderData = {
+              await api.post("/api/orders/checkout", {
                 userId: loggedInUser.id,
                 email: loggedInUser.email,
-                items: buildOrderItems(), // ensure productId exists
+                items: buildOrderItems(),
                 totalAmount,
                 shippingAddress: { ...formData },
                 paymentMethod: "Razorpay",
                 paymentStatus: "Paid",
-              };
-
-              const orderRes = await fetch("http://localhost:5000/api/orders/checkout", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(paidOrderData),
               });
 
-              if (orderRes.ok) {
-                const pts = addLoyaltyPoints(totalAmount);
-                clearCart();
-                navigate("/thankyou", {
-                  state: {
-                    name: formData.fullName,
-                    total: totalAmount,
-                    earnedPoints: pts,
-                  },
-                });
-              } else {
-                alert("⚠️ Payment succeeded but order creation failed.");
-              }
+              const pts = addLoyaltyPoints(totalAmount);
+              clearCart();
+
+              navigate("/thankyou", {
+                state: {
+                  name: formData.fullName,
+                  total: totalAmount,
+                  earnedPoints: pts,
+                },
+              });
             } else {
-              alert("❌ Payment verification failed.");
+              alert("Payment verification failed.");
             }
           } catch (err) {
-            console.error("Razorpay verify error:", err);
-            alert("Server verification error. Try again later.");
+            console.error("Verify error:", err);
+            alert("Payment verified but order failed.");
           }
         },
         prefill: {
@@ -240,30 +199,20 @@ const Checkout = () => {
       };
 
       const razor = new window.Razorpay(options);
-      razor.on("payment.failed", (res) => {
-        console.error("Payment Failed:", res.error);
-        alert("Payment failed: " + res.error.description);
-      });
       razor.open();
     } catch (err) {
-      console.error("Razorpay init error:", err);
+      console.error("Razorpay Error:", err);
       alert("Unable to initialize payment.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Empty cart view
   if (cartItems.length === 0) {
     return (
-      <div className="text-center py-20 bg-gray-50 min-h-[80vh]">
-        <h2 className="text-3xl font-semibold text-gray-700 mb-4">
-          Your cart is empty 🛒
-        </h2>
-        <Link
-          to="/shop"
-          className="bg-pink-500 text-white px-6 py-3 rounded-lg hover:bg-pink-600 transition"
-        >
+      <div className="text-center py-20">
+        <h2 className="text-3xl font-semibold mb-4">Your cart is empty 🛒</h2>
+        <Link to="/shop" className="bg-pink-500 text-white px-6 py-3 rounded-lg">
           Go Shopping
         </Link>
       </div>
@@ -272,135 +221,38 @@ const Checkout = () => {
 
   return (
     <div className="bg-gray-50 py-24 px-6 md:px-20">
-      <h2 className="text-4xl font-semibold text-center mb-10 text-gray-800">
-        Checkout
-      </h2>
+      <h2 className="text-4xl font-semibold text-center mb-10">Checkout</h2>
 
       <div className="grid md:grid-cols-2 gap-10 max-w-6xl mx-auto">
-        {/* Billing form */}
-        <form onSubmit={handlePlaceOrder} className="bg-white shadow-lg rounded-2xl p-8 border">
-          <h3 className="text-2xl font-semibold mb-6 text-gray-800">Billing Details</h3>
+        <form onSubmit={handlePlaceOrder} className="bg-white p-8 rounded-2xl shadow">
+          <h3 className="text-2xl font-semibold mb-6">Billing Details</h3>
 
-          {/* Inputs */}
-          {[
-            { label: "Full Name", name: "fullName" },
-            { label: "Phone Number", name: "phone" },
-            { label: "Address", name: "address", type: "textarea" },
-            { label: "City", name: "city" },
-            { label: "Postal Code", name: "postalCode" },
-          ].map(({ label, name, type }) => (
-            <div className="mb-5" key={name}>
-              <label className="block text-gray-600 mb-1">{label}</label>
-
-              {type === "textarea" ? (
-                <textarea
-                  name={name}
-                  value={formData[name]}
-                  onChange={handleChange}
-                  className={`w-full border rounded-lg px-4 py-2 resize-none ${
-                    errors[name] ? "border-red-500" : "border-gray-300"
-                  }`}
-                  rows="3"
-                />
-              ) : (
-                <input
-                  type="text"
-                  name={name}
-                  value={formData[name]}
-                  onChange={handleChange}
-                  className={`w-full border rounded-lg px-4 py-2 ${
-                    errors[name] ? "border-red-500" : "border-gray-300"
-                  }`}
-                />
-              )}
-
-              {errors[name] && <p className="text-red-500 text-sm mt-1">{errors[name]}</p>}
+          {["fullName", "phone", "address", "city", "postalCode"].map((name) => (
+            <div className="mb-4" key={name}>
+              <input
+                name={name}
+                value={formData[name]}
+                onChange={handleChange}
+                placeholder={name}
+                className="w-full border px-4 py-2 rounded"
+              />
+              {errors[name] && <p className="text-red-500 text-sm">{errors[name]}</p>}
             </div>
           ))}
 
-          {/* Email (readonly) */}
-          <div className="mb-5">
-            <label className="block text-gray-600 mb-1">Email Address</label>
-            <input
-              type="email"
-              readOnly
-              value={formData.email}
-              className="w-full border rounded-lg px-4 py-2 bg-gray-100"
-            />
-          </div>
+          <button disabled={isLoading} className="w-full bg-pink-500 text-white py-3 rounded-full">
+            Place Order (COD)
+          </button>
 
-          {/* Buttons */}
-          <div className="mt-6 space-y-3">
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-pink-500 text-white py-3 rounded-full"
-            >
-              {isLoading ? "Processing..." : "Place Order (COD)"}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleRazorpayPayment}
-              disabled={isLoading}
-              className="w-full bg-green-500 text-white py-3 rounded-full"
-            >
-              {isLoading ? "Processing..." : "Pay with Razorpay"}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleRazorpayPayment}
+            disabled={isLoading}
+            className="w-full bg-green-500 text-white py-3 rounded-full mt-3"
+          >
+            Pay with Razorpay
+          </button>
         </form>
-
-        {/* Order summary */}
-        <div className="bg-white shadow-lg rounded-2xl p-8 border">
-          <h3 className="text-2xl font-semibold mb-6 text-gray-800">Order Summary</h3>
-
-          <div className="space-y-4 max-h-[400px] overflow-y-auto">
-            {cartItems.map((item, idx) => (
-              <div
-                key={item.productId || item._id || item.id || idx} // <- fixes "unique key" warning
-                className="flex justify-between border-b pb-2"
-              >
-                <div>
-                  <h4 className="text-gray-800 font-medium">{item.name}</h4>
-                  <p className="text-gray-500 text-sm">
-                    {item.quantity} × {formatPrice(item.price)}
-                  </p>
-                </div>
-                <span className="font-medium text-gray-700">
-                  {formatPrice(item.price * item.quantity)}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 border-t pt-4">
-            <div className="flex justify-between mb-2">
-              <span>Subtotal</span>
-              <span>{formatPrice(totalAmount)}</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span>Shipping</span>
-              <span className="font-medium text-green-600">Free</span>
-            </div>
-            <hr className="my-3" />
-            <div className="flex justify-between text-xl font-semibold text-gray-900">
-              <span>Total</span>
-              <span>{formatPrice(totalAmount)}</span>
-            </div>
-          </div>
-
-          <div className="mt-6 bg-pink-50 p-4 rounded-lg border border-pink-200">
-            <p className="text-pink-700 font-medium">
-              You will earn{" "}
-              <span className="font-bold text-pink-600">{earnedPoints}</span> loyalty points
-              with this order.
-            </p>
-            <p className="text-gray-700 mt-2">
-              Current Balance:{" "}
-              <span className="font-semibold text-pink-600">{loyaltyPoints} points</span>
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

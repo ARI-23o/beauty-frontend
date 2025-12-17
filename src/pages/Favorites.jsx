@@ -25,7 +25,7 @@ const Favorites = () => {
       }
 
       // ✅ FIXED: removed API_BASE, use relative path with shared api instance
-      const res = await api.get("/favorites", {
+      const res = await api.get("/api/favorites", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -65,7 +65,7 @@ const Favorites = () => {
       const pid = productId?._id || productId?.id || productId;
 
       // ✅ FIXED: removed API_BASE, use relative path with api
-      await api.delete(`/favorites/${pid}`, {
+      await api.delete(`/api/favorites/${pid}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -162,3 +162,4 @@ const Favorites = () => {
 };
 
 export default Favorites;
+.

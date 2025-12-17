@@ -209,7 +209,7 @@ function ProductDetail() {
         setFavorited(true);
       } else {
         // ✅ removed API_BASE
-        await api.delete(`/api/favorites/${pid}`, {
+        await api.delete(`/favorites/${pid}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setFavorited(false);

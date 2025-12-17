@@ -74,7 +74,7 @@ const ProductQuickView = ({ product, isOpen, onClose }) => {
       const token = localStorage.getItem("token");
       if (!token) return setFavorited(false);
 
-      const res = await api.get(`${API_BASE}/api/favorites`, {
+      const res = await api.get(`/api/favorites`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -113,13 +113,13 @@ const ProductQuickView = ({ product, isOpen, onClose }) => {
     try {
       if (!favorited) {
         await api.post(
-          `${API_BASE}/api/favorites/${productId}`,
+          `/api/favorites/${productId}`,
           {},
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setFavorited(true);
       } else {
-        await api.delete(`${API_BASE}/api/favorites/${productId}`, {
+        await api.delete(`/api/favorites/${productId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setFavorited(false);

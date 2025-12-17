@@ -89,7 +89,7 @@ function ProductDetail() {
         return;
       }
       // ✅ removed API_BASE
-      const res = await api.get(`/favorites`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await api.get(`/api/favorites`, { headers: { Authorization: `Bearer ${token}` } });
       const favs = Array.isArray(res.data.favorites)
         ? res.data.favorites.map((f) => f._id || f.id || f.productId)
         : [];
@@ -202,14 +202,14 @@ function ProductDetail() {
       if (!favorited) {
         // ✅ removed API_BASE
         await api.post(
-          `/favorites/${pid}`,
+          `/api/favorites/${pid}`,
           {},
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setFavorited(true);
       } else {
         // ✅ removed API_BASE
-        await api.delete('/favorites/${pid}`, {
+        await api.delete(`/api/favorites/${pid}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setFavorited(false);

@@ -3,7 +3,7 @@ import axios from "axios";
 
 const BASE =
   import.meta.env.VITE_API_BASE ||
-  "https://beauty-backend-reyn.onrender.com/api"; // fallback (deployed backend)
+  "https://beauty-backend-reyn.onrender.com"; // fallback (deployed backend)
 
 const api = axios.create({
   baseURL: BASE,

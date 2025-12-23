@@ -3,7 +3,7 @@ import axios from "axios";
 
 const BASE =
   import.meta.env.VITE_API_BASE ||
-  "https://beauty-backend-reyn.onrender.com"; // fallback (deployed backend)
+  "https://beauty-backend-reyn.onrender.com";
 
 const api = axios.create({
   baseURL: BASE,
@@ -13,21 +13,23 @@ const api = axios.create({
   },
 });
 
-// Add token automatically if present (ADMIN FIRST, then USER)
-api.interceptors.request.use((config) => {
-  api.interceptors.request.use((config) => {
-  const isAdminRoute = config.url?.includes("/api/admin");
+// ✅ SINGLE interceptor (NOT nested)
+api.interceptors.request.use(
+  (config) => {
+    const isAdminRoute = config.url?.includes("/api/admin");
 
-  const adminToken = localStorage.getItem("adminToken");
-  const userToken = localStorage.getItem("token");
+    const adminToken = localStorage.getItem("adminToken");
+    const userToken = localStorage.getItem("token");
 
-  const token = isAdminRoute ? adminToken : userToken;
+    const token = isAdminRoute ? adminToken : userToken;
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
 
-  return config;
-});
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 export default api;

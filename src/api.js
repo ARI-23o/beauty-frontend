@@ -15,18 +15,18 @@ const api = axios.create({
 
 // Add token automatically if present (ADMIN FIRST, then USER)
 api.interceptors.request.use((config) => {
-  try {
-    const adminToken = localStorage.getItem("adminToken");
-    const userToken = localStorage.getItem("token");
+  api.interceptors.request.use((config) => {
+  const isAdminRoute = config.url?.includes("/api/admin");
 
-    const token = adminToken || userToken; // 🔑 IMPORTANT FIX
+  const adminToken = localStorage.getItem("adminToken");
+  const userToken = localStorage.getItem("token");
 
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  } catch (e) {
-    // ignore
+  const token = isAdminRoute ? adminToken : userToken;
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
 
